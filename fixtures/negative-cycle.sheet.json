@@ -1,0 +1,1 @@
+{"id":"negative-cycle","lanes":[{"cells":[{"id":"a.echo","inputs":{"b":"b.echo"},"kind":"prompt","template":"a sees {{b}}"},{"id":"b.echo","inputs":{"a":"a.echo"},"kind":"prompt","template":"b sees {{a}}"}],"id":"main"}],"lanesheet":"0.1","outputs":["a.echo"],"title":"NEGATIVE: a piping cycle must be refused by name (lane sheets are DAGs)"}

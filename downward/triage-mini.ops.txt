@@ -1,0 +1,50 @@
+; lanesheet_emit spike -- workflow 'triage-mini'
+; LOAD program (mapping: DOWNWARD.md S1). Response annotations are the
+; fabric's own discipline (quilt-verilog README, 5+1 table): BIND/LINK/VIEW
+; are answered ACK/NAK; EFFECT and TICK carry no response promise.
+
+; --- LOAD: bind cells ---
+BIND   cell 1   ; first bind sets cell_id (value cell 'inbox')  -> ACK
+BIND   cell 1   dial[5] THRESH <- 12000  -> ACK
+BIND   cell 2   ; first bind sets cell_id (prompt cell 'summarize')  -> ACK
+BIND   cell 2   dial[5] THRESH <- 8000  -> ACK
+EXTERN cell 2   'summarize' ; NOT AN OPCODE -- a black-box port (QUIL propose / fabric Law 4).
+       ; the cell's text and behaviour stay in the sheet layer; only an integer
+       ; shadow and the ACK/NAK discipline cross into the fabric.
+BIND   cell 3   ; first bind sets cell_id (tool cell 'post_digest')  -> ACK
+EXTERN cell 3   'post_digest' ; NOT AN OPCODE -- a black-box port (QUIL propose / fabric Law 4).
+       ; the cell's text and behaviour stay in the sheet layer; only an integer
+       ; shadow and the ACK/NAK discipline cross into the fabric.
+
+; --- LOAD: link edges (wiring as data) ---
+LINK   cell 1   slot 0 := {peer 2, base 16384}  -> ACK
+LINK   cell 2   slot 0 := {peer 3, base 16384}  -> ACK
+
+; --- RUN: one pass, per the time mapping (DOWNWARD.md S1b) ---
+; A workflow step = a tick window: ops issued and answered, propagation at
+; one edge per TICK, the step commits at a tick boundary (super-step shape).
+; STEP 1
+EFFECT cell 1   src PORT dat 42  ; ingress flit (Law 4 generic IO contract).
+       ; EFFECT is not answered; an unbound src is dropped silently
+       ; (README), so the sheet's loader binds the port as the src of record.
+TICK   ; decay sweep, leak, fire test on cell 1: if act >= THRESH and REFR = 0,
+       ; fanout EFFECT -> cell 2 (one-tick edge delay: the step's effect
+       ; is visible downstream only from this boundary)
+; STEP 2
+PORT-IN cell 2   ; NOT AN OPCODE -- the prompt port 'summarize' answers: integer shadow dat 23144,
+       ; closed by ACK (a refusal / timeout is NAK and the step aborts). The wait
+       ; happened off-fabric, between tick windows; the fabric never waits.
+TICK   ; fanout from cell 2 to cell 3 at this boundary
+; STEP 3
+PORT-IN cell 3   ; NOT AN OPCODE -- the tool port 'post_digest' answers: completion only, no payload word,
+       ; closed by ACK (a refusal / timeout is NAK and the step aborts). The wait
+       ; happened off-fabric, between tick windows; the fabric never waits.
+VIEW   cell 3   ; read act / wsum(edges) / a dial -- response flit carries the value  -> ACK
+
+; --- Bound fabric image (post-LOAD, pre-run) ---
+; cell 1   canonical hash 0x7dfe8368e40da141
+; cell 2   canonical hash 0x4c10052d26fa9835
+; cell 3   canonical hash 0x6d21ffca1d2ae306
+; fabric hash (spike convention: FNV-1a over cells concatenated in ascending
+; id order; the Charter pins the per-cell bytes, not this composition)
+; = 0xa7267a0a56b3e07a

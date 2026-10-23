@@ -1,0 +1,6 @@
+{"cell":"input.mode","inputs":{},"inputs_hash":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","kind":"value","output":"slow"}
+{"cell":"arm.fast","inputs":{},"inputs_hash":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","kind":"value","output":"took the short channel"}
+{"cell":"arm.slow","inputs":{},"inputs_hash":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","kind":"value","output":"took the long way round"}
+{"cell":"route.pick","inputs":{"cond":"slow","else":"took the long way round","then":"took the short channel"},"inputs_hash":"36d29149eb938fcbfb0a6a5399d9c944fa444f369785d76f9c34e303f539d199","kind":"branch","output":"took the long way round"}
+{"cell":"report.prompt","inputs":{"route":"took the long way round"},"inputs_hash":"37d1b0e4a1ed28204767589f065542d208be05927110ec7c3d76a301aa5eb718","kind":"prompt","output":"The run took the long way round."}
+{"cell":"report.answer","inputs":{"prompt":"The run took the long way round."},"inputs_hash":"b9270d196dfe26596604a46f06546f3edf54139b4ad7d97c14a92f6ca3add356","kind":"llm","output":"[stub-llm:d71abb67] The run took the long way round. -> noted"}
