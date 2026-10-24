@@ -1,0 +1,3 @@
+{"cell":"input.text","inputs":{},"inputs_hash":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","kind":"value","output":"unset"}
+{"cell":"work.count","inputs":{"text":"unset"},"inputs_hash":"f5cfa2ce2fe7357d182a0716531413e5f5ebfdf04f5279cf3bc56356549b62b4","kind":"tool","output":{"chars":5,"words":1}}
+{"cell":"output.report","inputs":{"count":{"chars":5,"words":1}},"inputs_hash":"55f78437baa7ba0254910311d1da0398bb3d56e8fcfe9a849e77dfc56f48c361","kind":"prompt","output":"counted: {\"chars\":5,\"words\":1}"}

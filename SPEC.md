@@ -1,5 +1,9 @@
 # Lane Sheets 0.1 — Specification
 
+> **0.2:** the `sheet` cell kind (sub-sheet composition) is specified
+> in `SPEC-AMENDMENT.md`, which extends this document. Everything
+> below is the 0.1 format and remains in force unchanged.
+
 **SuperInstance.** Agent workflows as *sheet data*: one abstraction below
 LangChain/LangGraph, the way Verilog sits below C and Python. A workflow
 is a JSON document of lanes and cells. It is not code in any framework's

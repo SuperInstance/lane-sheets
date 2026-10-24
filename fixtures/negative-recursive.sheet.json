@@ -1,0 +1,1 @@
+{"id":"negative-recursive","lanes":[{"cells":[{"id":"input.seed","kind":"value","value":"ouroboros"},{"bind":{"input.seed":"seed"},"id":"loop.self","inputs":{"seed":"input.seed"},"kind":"sheet","output":"input.seed","sheet":"negative-recursive"}],"id":"main"}],"lanesheet":"0.2","outputs":["loop.self"],"title":"Negative: a sheet that contains itself must be refused by name"}

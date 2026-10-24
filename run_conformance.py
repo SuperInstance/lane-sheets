@@ -11,6 +11,11 @@ For every negative fixture (fixtures/negative-*.sheet.json with a
 <name>.expected.json sidecar naming the expected refusal): both the
 interpreter and the lifter must refuse with exactly that error name.
 
+Sheet references (0.2 `sheet` cells) resolve against the fixtures
+directory itself -- the fixture-local library: linear-chain doubles
+as an inner sheet, and word-frame / leaf-define / mid-wrap are inner
+sheets that are also standalone fixtures in their own right.
+
 Run with the venv python so langgraph is importable:
     .venv/bin/python run_conformance.py
 (Lifted modules are executed with the same interpreter.)
@@ -28,6 +33,8 @@ sys.path.insert(0, str(ROOT))
 
 from lanesheet import common, interpret, lift_langgraph  # noqa: E402
 
+RESOLVER = common.local_resolver(FIXTURES)
+
 
 def trace_bytes(lines):
     return ("\n".join(lines) + "\n").encode("utf-8")
@@ -37,7 +44,7 @@ def check_positive(sheet_path):
     name = sheet_path.name.replace(".sheet.json", "")
     problems = []
     sheet = common.load_sheet(sheet_path)
-    interp_lines = interpret.run_sheet(sheet)
+    interp_lines = interpret.run_sheet(sheet, resolve=RESOLVER)
     interp = trace_bytes(interp_lines)
 
     golden_path = FIXTURES / f"{name}.golden.jsonl"
@@ -48,7 +55,7 @@ def check_positive(sheet_path):
 
     LIFTED.mkdir(exist_ok=True)
     lifted_path = LIFTED / f"{name}_lifted.py"
-    lifted_path.write_text(lift_langgraph.lift(sheet), encoding="utf-8")
+    lifted_path.write_text(lift_langgraph.lift(sheet, resolve=RESOLVER), encoding="utf-8")
     proc = subprocess.run(
         [sys.executable, str(lifted_path)],
         capture_output=True,
@@ -60,7 +67,7 @@ def check_positive(sheet_path):
         problems.append("lifted trace != interpreter trace")
 
     status = "PASS" if not problems else "FAIL"
-    print(f"{status} {name} ({len(interp_lines)} cells)" + ("" if not problems else " -- " + "; ".join(problems)))
+    print(f"{status} {name} ({len(interp_lines)} trace lines)" + ("" if not problems else " -- " + "; ".join(problems)))
     return not problems
 
 
@@ -72,7 +79,7 @@ def check_negative(sheet_path):
     sheet = None
     try:
         sheet = json.loads(sheet_path.read_text(encoding="utf-8"))
-        interpret.run_sheet(sheet)
+        interpret.run_sheet(sheet, resolve=RESOLVER)
         problems.append("interpreter accepted the sheet")
     except common.LaneSheetError as exc:
         if exc.name != expected:
@@ -80,7 +87,7 @@ def check_negative(sheet_path):
 
     if sheet is not None:
         try:
-            lift_langgraph.lift(sheet)
+            lift_langgraph.lift(sheet, resolve=RESOLVER)
             problems.append("lifter accepted the sheet")
         except common.LaneSheetError as exc:
             if exc.name != expected:

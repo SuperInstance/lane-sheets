@@ -1,24 +1,45 @@
 """Lane-sheet loading, validation, and canonical execution order.
 
-Validation is where the spec's refusals live: every construct lane-sheet
-0.1 does not support is refused here, by name, before any execution --
-in the interpreter and in the lifter alike. Nothing is silently
-ignored, defaulted, or approximated.
+Validation is where the spec's refusals live: every construct the
+format does not support is refused here, by name, before any
+execution -- in the interpreter and in the lifter alike. Nothing is
+silently ignored, defaulted, or approximated.
+
+Lane-sheet 0.2 (SPEC-AMENDMENT.md) adds the `sheet` cell kind:
+sub-sheet composition. Validation of a sheet cell resolves its
+reference against a sheet library (a resolver callable), checks the
+reference chain for recursion and excessive depth, validates the
+referenced sheet recursively, and checks the port mapping (bind /
+output) against the referenced sheet's cells.
 """
 
+import json
 import re
+from pathlib import Path
 
 from . import runtime
 
-FORMAT_VERSION = "0.1"
+FORMAT_VERSION = "0.2"
+SUPPORTED_VERSIONS = ("0.1", "0.2")
 
-CELL_KINDS = ("value", "prompt", "llm", "tool", "branch")
+CELL_KINDS = ("value", "prompt", "llm", "tool", "branch", "sheet")
 
 # Kinds that exist on the Quilt shelf (SuperInstance/quilt cell-kinds.md,
-# quilt-agent README) but are deliberately NOT part of lane-sheet 0.1.
+# quilt-agent README) but are deliberately NOT part of lane-sheets.
 QUILT_KINDS_NOT_IN_V01 = (
     "formula", "api", "program", "sensor", "listener", "router", "io", "ai",
 )
+
+# A sheet reference may nest at most this many edges below the sheet
+# that was handed to the engine. Deeper composition is refused
+# (SheetNestingTooDeep); the cap exists so a reference graph that is
+# finite but absurd cannot exhaust the engine -- raise it deliberately
+# in a future version, never silently.
+MAX_NESTING_DEPTH = 8
+
+# Sheet references are bare library names (SPEC-AMENDMENT section 2):
+# no path separators, no traversal, no leading dot.
+_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 
 _TOP_KEYS = {"lanesheet", "id", "title", "lanes", "outputs"}
 _LANE_KEYS = {"id", "cells"}
@@ -29,6 +50,7 @@ _KIND_KEYS = {
     "llm": set(),
     "tool": {"tool"},
     "branch": {"equals"},
+    "sheet": {"sheet", "bind", "output", "outputs"},
 }
 _RESERVED_IDS = {"START", "END"}
 
@@ -46,22 +68,71 @@ def _fail(name, detail):
 
 
 def load_sheet(path):
-    import json
-
     with open(path, "r", encoding="utf-8") as fh:
         sheet = json.load(fh)
-    return validate_sheet(sheet)
+    # References from a file-loaded sheet resolve against the library
+    # in the sheet's own directory (fixture-local names, section 2 of
+    # the amendment).
+    return validate_sheet(sheet, resolve=local_resolver(Path(path).parent))
 
 
-def validate_sheet(sheet):
-    """Check a parsed sheet against lane-sheet 0.1. Returns the sheet."""
+def local_resolver(base_dir):
+    """A resolver over a directory of `<ref>.sheet.json` files.
+
+    The resolver is the sheet library: given a bare reference name it
+    returns the parsed (not yet validated) sheet document. Results are
+    cached per resolver, so a sheet referenced from many cells is read
+    once. A missing or unparsable file is an UnresolvedSheetRef.
+    """
+    base = Path(base_dir)
+    cache = {}
+
+    def resolve(ref):
+        if ref not in cache:
+            path = base / f"{ref}.sheet.json"
+            try:
+                parsed = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as exc:
+                raise LaneSheetError(
+                    "UnresolvedSheetRef",
+                    f"cannot resolve sheet reference {ref!r} against library {str(base)!r}: {exc}",
+                )
+            cache[ref] = parsed
+        return cache[ref]
+
+    return resolve
+
+
+def load_ref(resolve, ref):
+    """Resolve a sheet reference at run time, with named refusals."""
+    if resolve is None:
+        _fail(
+            "UnresolvedSheetRef",
+            f"sheet reference {ref!r} cannot be resolved: no sheet library was supplied",
+        )
+    if not isinstance(ref, str) or not _REF_RE.match(ref):
+        _fail("InvalidSheetRef", f"sheet reference {ref!r} is not a bare library name")
+    return resolve(ref)
+
+
+def validate_sheet(sheet, resolve=None, _chain=()):
+    """Check a parsed sheet against the lane-sheet format. Returns the sheet.
+
+    `resolve` is a sheet-library resolver (see local_resolver); it is
+    required iff the sheet (transitively) contains `sheet` cells.
+    `_chain` is the tuple of references traversed to reach this sheet,
+    used for recursion and depth refusals.
+    """
     if not isinstance(sheet, dict):
         _fail("SheetNotObject", "a lane sheet is a JSON object")
     unknown = set(sheet) - _TOP_KEYS
     if unknown:
         _fail("UnexpectedKey", f"sheet has unsupported key(s): {sorted(unknown)}")
-    if sheet.get("lanesheet") != FORMAT_VERSION:
-        _fail("UnsupportedVersion", f"lanesheet version must be {FORMAT_VERSION!r}")
+    if sheet.get("lanesheet") not in SUPPORTED_VERSIONS:
+        _fail(
+            "UnsupportedVersion",
+            f"lanesheet version must be one of {SUPPORTED_VERSIONS}, got {sheet.get('lanesheet')!r}",
+        )
     if not isinstance(sheet.get("id"), str) or not sheet["id"]:
         _fail("MissingField", "sheet requires a non-empty string 'id'")
     lanes = sheet.get("lanes")
@@ -100,7 +171,80 @@ def validate_sheet(sheet):
             _fail("UndeclaredOutput", f"output {out!r} is not a cell in this sheet")
 
     canonical_order(sheet)  # raises CycleDetected; also checks name collisions
+
+    if sheet["lanesheet"] == "0.1":
+        for cell in cells.values():
+            if cell["kind"] == "sheet":
+                _fail(
+                    "UnsupportedVersion",
+                    f"cell {cell['id']!r}: 'sheet' cells require lanesheet 0.2; "
+                    "this sheet declares 0.1",
+                )
+    _validate_sheet_cells(sheet, cells, resolve, _chain)
     return sheet
+
+
+def _validate_sheet_cells(sheet, cells, resolve, chain):
+    """Cross-check every `sheet` cell against the sheet it references.
+
+    For each sheet cell: the reference must be a bare library name, it
+    must not close a reference cycle (directly or transitively), the
+    chain must stay within the nesting cap, the referenced sheet must
+    itself validate, and the port mapping must name real interior
+    cells of the right kind.
+    """
+    for cell in cells.values():
+        if cell["kind"] != "sheet":
+            continue
+        cell_id = cell["id"]
+        ref = cell["sheet"]
+        if not _REF_RE.match(ref):
+            _fail(
+                "InvalidSheetRef",
+                f"cell {cell_id!r}: sheet reference {ref!r} is not a bare library name",
+            )
+        if ref in chain:
+            _fail(
+                "RecursiveSheetRef",
+                f"cell {cell_id!r}: sheet reference {ref!r} closes a reference cycle "
+                f"({' -> '.join(chain + (ref,))}); a sheet may not contain itself, "
+                "directly or transitively",
+            )
+        if len(chain) >= MAX_NESTING_DEPTH:
+            _fail(
+                "SheetNestingTooDeep",
+                f"cell {cell_id!r}: reference chain {' -> '.join(chain + (ref,))} exceeds "
+                f"the nesting cap of {MAX_NESTING_DEPTH}",
+            )
+        inner = load_ref(resolve, ref)
+        validate_sheet(inner, resolve=resolve, _chain=chain + (ref,))
+        inner_cells = {c["id"]: c for c in all_cells(inner)}
+
+        for target in cell.get("bind", {}):
+            if target not in inner_cells:
+                _fail(
+                    "UnknownBindCell",
+                    f"cell {cell_id!r} binds interior cell {target!r}, which does not "
+                    f"exist in sheet {ref!r}",
+                )
+            if inner_cells[target]["kind"] != "value":
+                _fail(
+                    "BindTargetNotValue",
+                    f"cell {cell_id!r} binds interior cell {target!r} of sheet {ref!r}, "
+                    f"which is a {inner_cells[target]['kind']!r} cell; only 'value' "
+                    "cells may be bound -- a parameter is a constant awaiting a value",
+                )
+        if "output" in cell:
+            targets = [cell["output"]]
+        else:
+            targets = list(cell.get("outputs", {}).values())
+        for target in targets:
+            if target not in inner_cells:
+                _fail(
+                    "UnknownSheetOutput",
+                    f"cell {cell_id!r} takes its output from interior cell {target!r}, "
+                    f"which does not exist in sheet {ref!r}",
+                )
 
 
 def _validate_cell(cell, cells, positions, position):
@@ -163,6 +307,61 @@ def _validate_cell(cell, cells, positions, position):
         extra = set(inputs) - {"cond", "then", "else"}
         if extra:
             _fail("UnexpectedPort", f"branch cell {cell_id!r} has unsupported port(s): {sorted(extra)}")
+    elif kind == "sheet":
+        ref = cell.get("sheet")
+        if not isinstance(ref, str) or not ref:
+            _fail("MissingField", f"sheet cell {cell_id!r} requires a non-empty string 'sheet' reference")
+        bind = cell.get("bind", {})
+        if not isinstance(bind, dict) or not all(
+            isinstance(k, str) and isinstance(v, str) for k, v in bind.items()
+        ):
+            _fail(
+                "MissingField",
+                f"sheet cell {cell_id!r}: 'bind' must be an object mapping interior "
+                "cell ids to input port names",
+            )
+        # Port correspondence is exact: every bound port is piped, and
+        # every piped port is bound. An unbound pipe into a sub-sheet
+        # would be a value crossing the boundary to nowhere.
+        for port in bind.values():
+            if port not in inputs:
+                _fail(
+                    "MissingPort",
+                    f"sheet cell {cell_id!r} binds input port {port!r} but does not pipe it",
+                )
+        unbound = set(inputs) - set(bind.values())
+        if unbound:
+            _fail(
+                "UnexpectedPort",
+                f"sheet cell {cell_id!r} pipes port(s) {sorted(unbound)} that are not "
+                "bound to any interior cell",
+            )
+        has_output = "output" in cell
+        has_outputs = "outputs" in cell
+        if has_output and has_outputs:
+            _fail(
+                "SheetOutputConflict",
+                f"sheet cell {cell_id!r} declares both 'output' and 'outputs'; "
+                "declare exactly one boundary output shape",
+            )
+        if not has_output and not has_outputs:
+            _fail(
+                "MissingField",
+                f"sheet cell {cell_id!r} requires 'output' (one interior cell) or "
+                "'outputs' (a name -> interior cell map)",
+            )
+        if has_output and not isinstance(cell["output"], str):
+            _fail("MissingField", f"sheet cell {cell_id!r}: 'output' must be an interior cell id string")
+        if has_outputs:
+            outs = cell["outputs"]
+            if not isinstance(outs, dict) or not outs or not all(
+                isinstance(k, str) and isinstance(v, str) for k, v in outs.items()
+            ):
+                _fail(
+                    "MissingField",
+                    f"sheet cell {cell_id!r}: 'outputs' must be a non-empty object "
+                    "mapping output names to interior cell ids",
+                )
 
     cells[cell_id] = cell
     positions[cell_id] = position
