@@ -11,14 +11,20 @@ checker DOES establish, from the trace and the sheet alone:
      provider (and model) that produced it -- a trace without this
      header is not a host trace, and a header claiming "live" while
      every resolved binding is the stub is mislabelled;
-  2. the remaining records are exactly the sheet's cells, in
-     canonical order (SPEC section 6), each with exactly the keys
-     {cell, inputs, inputs_hash, kind, output};
+  2. the remaining records are exactly the run's cells, in the
+     interpreter's trace order: the sheet's cells in canonical order
+     (SPEC section 6), with each `sheet` cell's boundary record
+     followed immediately by its interior section (interior cell ids
+     prefixed by the sheet cell's id, rung by rung). Every record
+     carries exactly the keys {cell, inputs, inputs_hash, kind,
+     output};
   3. every inputs_hash recomputes from its inputs (SHA-256 over the
      canonical encoding, lanesheet.runtime.inputs_hash);
   4. value flow is internally consistent: each record's inputs are
      exactly the outputs its piping sources produced earlier in this
-     same trace.
+     same trace; a sheet cell's boundary output equals the interior
+     output it declares, and each bound interior `value` cell's
+     recorded output equals the value the boundary record piped in.
 
 Usage: python3 run_host_check.py <trace.jsonl> <sheet.json>
 Exit 0 and "HOST CHECK PASS" when every check holds.
@@ -35,10 +41,78 @@ from lanesheet import common, runtime  # noqa: E402
 TRACE_KEYS = {"cell", "inputs", "inputs_hash", "kind", "output"}
 
 
+def _consume(sheet, resolve, prefix, records, idx, problems):
+    """Match records[idx:] against this sheet's expected trace section.
+
+    Returns (next unconsumed index, values) where values maps this
+    rung's cell ids to the outputs the trace records for them. A
+    `sheet` cell consumes its boundary record, then its interior
+    section (recursion, prefix accumulated), then has its boundary
+    claims checked against the interior values it produced.
+    """
+    values = {}
+    for cell in common.canonical_order(sheet):
+        cell_id = cell["id"]
+        where = f"record {idx} (cell {prefix + cell_id!r})"
+        if idx >= len(records):
+            problems.append(f"trace ends early: missing {where}")
+            return idx, values
+        record = records[idx]
+        idx += 1
+        if not isinstance(record, dict) or set(record) != TRACE_KEYS:
+            problems.append(f"{where}: keys are not exactly {sorted(TRACE_KEYS)}")
+            continue
+        if record["cell"] != prefix + cell_id or record["kind"] != cell["kind"]:
+            problems.append(
+                f"{where}: trace has cell {record['cell']!r} kind {record['kind']!r} "
+                "-- not the interpreter's trace order"
+            )
+            continue
+        if record["inputs_hash"] != runtime.inputs_hash(record["inputs"]):
+            problems.append(f"{where}: inputs_hash does not recompute")
+        sources = cell.get("inputs", {})
+        if all(src in values for src in sources.values()):
+            expected_inputs = {port: values[src] for port, src in sources.items()}
+            if record["inputs"] != expected_inputs:
+                problems.append(
+                    f"{where}: inputs do not match the outputs its piping sources produced"
+                )
+        else:
+            problems.append(f"{where}: a piping source produced no record earlier in this trace")
+        values[cell_id] = record["output"]
+        if cell["kind"] == "sheet":
+            inner = common.load_ref(resolve, cell["sheet"])
+            idx, inner_values = _consume(
+                inner, resolve, prefix + cell_id + "/", records, idx, problems
+            )
+            for target, port in cell.get("bind", {}).items():
+                if target in inner_values and inner_values[target] != record["inputs"].get(port):
+                    problems.append(
+                        f"{where}: bound interior cell {target!r} recorded "
+                        f"{inner_values[target]!r}, but the boundary piped "
+                        f"{record['inputs'].get(port)!r} in"
+                    )
+            if "output" in cell:
+                targets = [cell["output"]]
+                expected_output = inner_values.get(cell["output"])
+            else:
+                targets = list(cell["outputs"].values())
+                expected_output = {
+                    name: inner_values[target]
+                    for name, target in cell["outputs"].items()
+                    if target in inner_values
+                }
+            if all(t in inner_values for t in targets) and record["output"] != expected_output:
+                problems.append(
+                    f"{where}: boundary output does not equal the interior output it declares"
+                )
+    return idx, values
+
+
 def check(trace_path, sheet_path):
     problems = []
     sheet = common.load_sheet(sheet_path)
-    order = common.canonical_order(sheet)
+    resolve = common.local_resolver(Path(sheet_path).parent)
 
     raw = Path(trace_path).read_text(encoding="utf-8").splitlines()
     if not raw:
@@ -70,27 +144,13 @@ def check(trace_path, sheet_path):
         ):
             problems.append("header claims a live run but every binding is the stub provider")
 
-    # 2./3./4. body records
-    if len(body) != len(order):
-        problems.append(f"trace has {len(body)} cell records, sheet has {len(order)} cells")
-    values = {}
-    for i, (record, cell) in enumerate(zip(body, order)):
-        where = f"record {i} (cell {cell['id']!r})"
-        if not isinstance(record, dict) or set(record) != TRACE_KEYS:
-            problems.append(f"{where}: keys are not exactly {sorted(TRACE_KEYS)}")
-            continue
-        if record["cell"] != cell["id"] or record["kind"] != cell["kind"]:
-            problems.append(
-                f"{where}: trace has cell {record['cell']!r} kind {record['kind']!r} "
-                "-- not canonical order"
-            )
-            continue
-        if record["inputs_hash"] != runtime.inputs_hash(record["inputs"]):
-            problems.append(f"{where}: inputs_hash does not recompute")
-        expected_inputs = {port: values[src] for port, src in cell.get("inputs", {}).items()}
-        if record["inputs"] != expected_inputs:
-            problems.append(f"{where}: inputs do not match the outputs its piping sources produced")
-        values[cell["id"]] = record["output"]
+    # 2./3./4. body records: consume the expected trace shape,
+    # recursing into interior sections rung by rung.
+    consumed, _values = _consume(sheet, resolve, "", body, 0, problems)
+    if consumed < len(body):
+        problems.append(
+            f"trace has {len(body) - consumed} record(s) beyond the run's expected trace shape"
+        )
     return problems
 
 

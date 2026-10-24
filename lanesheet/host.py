@@ -17,6 +17,15 @@ stub conformance trace. Live output is nondeterministic; host traces
 are evidence of a run, not conformance objects (see run_host_check.py,
 which validates them structurally, never byte-for-byte).
 
+`sheet` cells (0.2) run exactly as the interpreter runs them: the
+host recurses through a sheet library, one rung down per cell, with
+per-invocation-site bound values and interior trace lines prefixed by
+the sheet cell's id. Bindings resolve by the same rule at every rung
+-- a binding keyed by a cell id applies to that id in whichever sheet
+document declares it; otherwise the cell's name ("llm", or a tool
+name) decides. The header names every binding the run resolves to at
+any rung, interiors included.
+
 Providers are duck-typed:
 
     complete(prompt, system=None, params=None) -> str     (llm cells)
@@ -40,14 +49,21 @@ see HOST.md) and "stub" (the runtime's deterministic stubs, for tools
 or for dry host runs). An unbound name is a named refusal, never a
 silent default.
 
-Usage: python -m lanesheet.host <sheet.json> <bindings.json>
+Usage: python -m lanesheet.host <sheet.json> <bindings.json> [--library DIR]
+
+Sheet references resolve against a sheet library: DIR when --library
+is given, else the sheet's own directory (the interpreter CLI's
+convention).
 """
 
 import json
 import sys
 import urllib.request
+from pathlib import Path
 
 from . import common, runtime
+
+_NO_OVERRIDE = object()
 
 # The custom-connector credential helper's documented location. It
 # attaches an `hsurr:*` surrogate credential to a request; the raw
@@ -205,11 +221,17 @@ def _binding_for(bindings, cell):
 # Host runner
 # ---------------------------------------------------------------------------
 
-def evaluate_cell_host(cell, values, bindings, providers):
+def evaluate_cell_host(cell, values, bindings, providers, value_override=_NO_OVERRIDE):
+    """Compute one non-`sheet` cell's output from the values map.
+
+    `value_override` mirrors the interpreter: a sub-sheet invocation's
+    bound `value` cell computes the piped value in place of its
+    constant.
+    """
     kind = cell["kind"]
     inputs = {port: values[src] for port, src in cell.get("inputs", {}).items()}
     if kind == "value":
-        output = cell["value"]
+        output = cell["value"] if value_override is _NO_OVERRIDE else value_override
     elif kind == "prompt":
         output = runtime.render_template(cell["template"], inputs)
     elif kind == "branch":
@@ -236,21 +258,16 @@ def evaluate_cell_host(cell, values, bindings, providers):
     return inputs, output
 
 
-def run_sheet_host(sheet, bindings):
-    """Execute a sheet with real bindings. Returns trace lines.
+def _collect_resolved(sheet, bindings, providers, resolve, resolved):
+    """Walk a sheet in execution order, recording resolved bindings.
 
-    Line 0 is the host header record; the remaining lines are the
-    canonical trace records, identical in format to the interpreter's.
+    `sheet` cells recurse into their referenced sheet at the point
+    they occur, so the header names the bindings a run resolves to at
+    every rung -- interiors included -- in first-resolution order.
+    Returns True iff any resolved binding is a live (non-stub)
+    provider. The sheet is already validated, so every reference
+    resolves and the walk terminates.
     """
-    common.validate_sheet(sheet)
-    providers = {}
-    for binding in bindings.values():
-        providers.setdefault(binding["provider"], PROVIDERS[binding["provider"]]())
-
-    # The header names only the bindings this sheet actually resolves
-    # to, in resolution order, and whether any of them is a live
-    # (non-stub) provider.
-    resolved = {}
     live = False
     for cell in common.canonical_order(sheet):
         if cell["kind"] in ("llm", "tool"):
@@ -259,6 +276,79 @@ def run_sheet_host(sheet, bindings):
                 resolved[key] = providers[binding["provider"]].describe(binding)
                 if binding["provider"] != "stub":
                     live = True
+        elif cell["kind"] == "sheet":
+            inner = common.load_ref(resolve, cell["sheet"])
+            if _collect_resolved(inner, bindings, providers, resolve, resolved):
+                live = True
+    return live
+
+
+def _run_host(sheet, bindings, providers, resolve, prefix, overrides):
+    """Execute a validated sheet with bindings. Returns (lines, values).
+
+    Mirrors the interpreter's recursion exactly: a `sheet` cell emits
+    ONE boundary line (its own inputs and the declared boundary
+    output), followed immediately by the interior sheet's section,
+    whose cell ids carry the accumulated prefix. `overrides` maps
+    this invocation's bound interior `value` cells to the values
+    piped in across the boundary; bindings apply unchanged at every
+    rung.
+    """
+    values = {}
+    lines = []
+    for cell in common.canonical_order(sheet):
+        cell_id = cell["id"]
+        if cell["kind"] == "sheet":
+            inputs = {port: values[src] for port, src in cell.get("inputs", {}).items()}
+            inner = common.load_ref(resolve, cell["sheet"])
+            inner_overrides = {
+                target: inputs[port] for target, port in cell.get("bind", {}).items()
+            }
+            inner_lines, inner_values = _run_host(
+                inner, bindings, providers, resolve, prefix + cell_id + "/", inner_overrides
+            )
+            if "output" in cell:
+                output = inner_values[cell["output"]]
+            else:
+                output = {
+                    name: inner_values[target]
+                    for name, target in cell["outputs"].items()
+                }
+            values[cell_id] = output
+            lines.append(
+                runtime.make_trace_line(prefix + cell_id, "sheet", inputs, output)
+            )
+            lines.extend(inner_lines)
+            continue
+        override = overrides.get(cell_id, _NO_OVERRIDE) if cell["kind"] == "value" else _NO_OVERRIDE
+        inputs, output = evaluate_cell_host(
+            cell, values, bindings, providers, value_override=override
+        )
+        values[cell_id] = output
+        lines.append(runtime.make_trace_line(prefix + cell_id, cell["kind"], inputs, output))
+    return lines, values
+
+
+def run_sheet_host(sheet, bindings, resolve=None):
+    """Execute a sheet with real bindings. Returns trace lines.
+
+    Line 0 is the host header record; the remaining lines are the
+    canonical trace records, identical in format to the interpreter's.
+    `resolve` is the sheet library (see common.local_resolver); it is
+    required iff the sheet (transitively) contains `sheet` cells --
+    without one, validation refuses them with UnresolvedSheetRef, as
+    it refuses a reference the supplied library cannot resolve.
+    """
+    common.validate_sheet(sheet, resolve=resolve)
+    providers = {}
+    for binding in bindings.values():
+        providers.setdefault(binding["provider"], PROVIDERS[binding["provider"]]())
+
+    # The header names only the bindings this run actually resolves
+    # to, in resolution order across all rungs, and whether any of
+    # them is a live (non-stub) provider.
+    resolved = {}
+    live = _collect_resolved(sheet, bindings, providers, resolve, resolved)
     header = {
         "bindings": resolved,
         "kind": "host-header",
@@ -268,23 +358,38 @@ def run_sheet_host(sheet, bindings):
     }
     lines = [runtime.canonical_json(header)]
 
-    values = {}
-    for cell in common.canonical_order(sheet):
-        inputs, output = evaluate_cell_host(cell, values, bindings, providers)
-        values[cell["id"]] = output
-        lines.append(runtime.make_trace_line(cell["id"], cell["kind"], inputs, output))
+    body, _values = _run_host(sheet, bindings, providers, resolve, "", {})
+    lines.extend(body)
     return lines
 
 
 def main(argv=None):
-    argv = sys.argv[1:] if argv is None else argv
+    argv = list(sys.argv[1:] if argv is None else argv)
+    library = None
+    if "--library" in argv:
+        at = argv.index("--library")
+        if at + 1 >= len(argv):
+            print(
+                "usage: python -m lanesheet.host <sheet.json> <bindings.json> [--library DIR]",
+                file=sys.stderr,
+            )
+            return 2
+        library = argv[at + 1]
+        del argv[at:at + 2]
     if len(argv) != 2:
-        print("usage: python -m lanesheet.host <sheet.json> <bindings.json>", file=sys.stderr)
+        print(
+            "usage: python -m lanesheet.host <sheet.json> <bindings.json> [--library DIR]",
+            file=sys.stderr,
+        )
         return 2
+    sheet_path = Path(argv[0])
     try:
-        sheet = common.load_sheet(argv[0])
+        sheet = common.load_sheet(sheet_path)
         bindings = load_bindings(argv[1])
-        lines = run_sheet_host(sheet, bindings)
+        resolve = common.local_resolver(
+            library if library is not None else sheet_path.parent
+        )
+        lines = run_sheet_host(sheet, bindings, resolve=resolve)
     except (common.LaneSheetError, HostError) as exc:
         print(f"refused: {exc}", file=sys.stderr)
         return 1

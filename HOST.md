@@ -13,7 +13,7 @@ header that keeps the two worlds unmistakable.
   the golden traces run on the deterministic stubs in
   `lanesheet/runtime.py` only. Byte-exact, reproducible, quarantined:
   the host never touches this path, and this path never sees a live
-  model. It still passes 7/7, untouched.
+  model. It passes 14/14, untouched.
 - **Tier 2 — live runs.** A host run is *evidence of a run*, not a
   conformance object. Live model output is nondeterministic, so no
   host trace is ever compared byte-for-byte with anything. Every host
@@ -28,9 +28,11 @@ header that keeps the two worlds unmistakable.
   `"live":true` while bound only to stubs is mislabelled and the
   checker rejects it. `run_host_check.py` validates a host trace
   *structurally*: header present and honest, records are exactly the
-  sheet's cells in canonical order, every `inputs_hash` recomputes,
-  and each cell's inputs equal what its piping sources produced
-  earlier in the same trace. Structure, never content.
+  run's cells in the interpreter's trace order (interior sections
+  included), every `inputs_hash` recomputes, each cell's inputs equal
+  what its piping sources produced earlier in the same trace, and a
+  sheet cell's boundary output equals the interior output it
+  declares. Structure, never content.
 
 ## Binding config
 
@@ -73,6 +75,48 @@ command makes a fresh live call and will produce different llm
 output — that is expected, and it is why the checker validates
 structure rather than bytes.
 
+## Nesting: `sheet` cells under the host
+
+The host runs nested sheets with exactly the interpreter's
+semantics — the recursion is the same shape, rung by rung:
+
+- A `sheet` cell runs its referenced sheet as a unit. The trace
+  shows ONE boundary line for the cell (its piped inputs, the
+  declared boundary output), followed immediately by the interior
+  section: the interior sheet's trace lines, cell ids prefixed with
+  the sheet cell's id (`wrap.answer/reasoning.prompt`), prefixes
+  accumulating per rung. With stub bindings, a host trace's body is
+  byte-identical to the conformance golden for the same sheet.
+- **The library convention.** References are bare names resolved
+  against a sheet library of `<name>.sheet.json` files: by default
+  the sheet's own directory (the interpreter CLI's convention), or
+  the directory named by `--library DIR`:
+
+  ```bash
+  python3 -m lanesheet.host <sheet.json> <bindings.json> [--library DIR]
+  ```
+
+- **Bindings reach the interior.** An `llm` or `tool` cell inside an
+  interior sheet resolves through the same host bindings, by the
+  same rule: a binding keyed by cell id applies to that id in
+  whichever sheet document declares it; otherwise the cell's name
+  decides. The header names every binding the run resolves to at any
+  rung, interiors included — a live provider used only two rungs
+  down still marks the run `"live":true` and is named.
+- **Refusals are the shared ones.** Validation is `common.py`'s,
+  unchanged: a reference cycle is `RecursiveSheetRef`, a reference
+  the supplied library cannot resolve is `UnresolvedSheetRef`, the
+  depth cap is `SheetNestingTooDeep` — by name, before any cell
+  runs, at every rung.
+
+The nested live example (outer sheet invokes an inner sheet whose
+`llm` cell binds to MiniMax):
+
+```bash
+python3 -m lanesheet.host examples/live-nested.sheet.json examples/minimax.bindings.json
+python3 run_host_check.py examples/live-nested.trace.jsonl examples/live-nested.sheet.json
+```
+
 ## Honest limits
 
 - One provider serves llm cells (MiniMax); tool cells bind only to
@@ -83,6 +127,7 @@ structure rather than bytes.
   `ProviderError` and no partial trace is emitted.
 - No concurrency: cells still execute one by one in canonical order,
   exactly as the interpreter does.
-- Sheets are validated by the unchanged 0.1 validator — tool names
-  are still restricted to the stub catalogue (`search`, `wordcount`,
-  `lookup`) until the spec grows real tool declarations.
+- Sheets are validated by the shared validator in
+  `lanesheet/common.py` — tool names are still restricted to the
+  stub catalogue (`search`, `wordcount`, `lookup`) until the spec
+  grows real tool declarations.
