@@ -10,12 +10,17 @@ checker DOES establish, from the trace and the sheet alone:
      marking the run live, naming the sheet, and naming every
      provider (and model) that produced it -- a trace without this
      header is not a host trace, and a header claiming "live" while
-     every resolved binding is the stub is mislabelled;
+     every resolved binding is the stub is mislabelled. A sheet tree
+     with no provider cells (no llm/tool anywhere, interiors
+     included) honestly resolves no bindings: its header must name
+     none, and the checker verifies that claim against the sheet;
   2. the remaining records are exactly the run's cells, in the
      interpreter's trace order: the sheet's cells in canonical order
      (SPEC section 6), with each `sheet` cell's boundary record
      followed immediately by its interior section (interior cell ids
-     prefixed by the sheet cell's id, rung by rung). Every record
+     prefixed by the sheet cell's id, rung by rung). A `sheet` cell
+     in `each` mode (0.3) is followed by one interior section per
+     element, in element order, prefixed `<cell>[<i>]/`. Every record
      carries exactly the keys {cell, inputs, inputs_hash, kind,
      output};
   3. every inputs_hash recomputes from its inputs (SHA-256 over the
@@ -39,6 +44,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lanesheet import common, runtime  # noqa: E402
 
 TRACE_KEYS = {"cell", "inputs", "inputs_hash", "kind", "output"}
+
+
+def _tree_has_provider_cells(sheet, resolve):
+    """True iff the sheet tree (transitively) contains llm/tool cells.
+
+    Decides what an honest header may claim: a run of a provider-free
+    sheet resolves no bindings, so its header names none -- and must
+    name none. Any other sheet's run resolves at least one.
+    """
+    for cell in common.canonical_order(sheet):
+        if cell["kind"] in ("llm", "tool"):
+            return True
+        if cell["kind"] == "sheet":
+            inner = common.load_ref(resolve, cell["sheet"])
+            if _tree_has_provider_cells(inner, resolve):
+                return True
+    return False
 
 
 def _consume(sheet, resolve, prefix, records, idx, problems):
@@ -82,31 +104,101 @@ def _consume(sheet, resolve, prefix, records, idx, problems):
         values[cell_id] = record["output"]
         if cell["kind"] == "sheet":
             inner = common.load_ref(resolve, cell["sheet"])
-            idx, inner_values = _consume(
-                inner, resolve, prefix + cell_id + "/", records, idx, problems
-            )
-            for target, port in cell.get("bind", {}).items():
-                if target in inner_values and inner_values[target] != record["inputs"].get(port):
-                    problems.append(
-                        f"{where}: bound interior cell {target!r} recorded "
-                        f"{inner_values[target]!r}, but the boundary piped "
-                        f"{record['inputs'].get(port)!r} in"
-                    )
-            if "output" in cell:
-                targets = [cell["output"]]
-                expected_output = inner_values.get(cell["output"])
+            if "each" in cell:
+                idx = _consume_each(cell, inner, resolve, prefix, record, records, idx, problems, where)
             else:
-                targets = list(cell["outputs"].values())
-                expected_output = {
-                    name: inner_values[target]
-                    for name, target in cell["outputs"].items()
-                    if target in inner_values
-                }
-            if all(t in inner_values for t in targets) and record["output"] != expected_output:
-                problems.append(
-                    f"{where}: boundary output does not equal the interior output it declares"
+                idx, inner_values = _consume(
+                    inner, resolve, prefix + cell_id + "/", records, idx, problems
                 )
+                for target, port in cell.get("bind", {}).items():
+                    if target in inner_values and inner_values[target] != record["inputs"].get(port):
+                        problems.append(
+                            f"{where}: bound interior cell {target!r} recorded "
+                            f"{inner_values[target]!r}, but the boundary piped "
+                            f"{record['inputs'].get(port)!r} in"
+                        )
+                if "output" in cell:
+                    targets = [cell["output"]]
+                    expected_output = inner_values.get(cell["output"])
+                else:
+                    targets = list(cell["outputs"].values())
+                    expected_output = {
+                        name: inner_values[target]
+                        for name, target in cell["outputs"].items()
+                        if target in inner_values
+                    }
+                if all(t in inner_values for t in targets) and record["output"] != expected_output:
+                    problems.append(
+                        f"{where}: boundary output does not equal the interior output it declares"
+                    )
     return idx, values
+
+
+def _consume_each(cell, inner, resolve, prefix, record, records, idx, problems, where):
+    """Match the per-element sections of an `each` cell (0.3).
+
+    The boundary record is already consumed. What follows must be one
+    interior section per element of the list the boundary record
+    piped into the `each` port, in element order, ids prefixed
+    `<cell>[<i>]/`. Each section is checked like any interior
+    section; the bound element cell's recorded output in section i
+    must equal element i, the fixed bindings must match the boundary
+    record's inputs, and the boundary output must equal the declared
+    interior outputs collected in element order.
+    """
+    cell_id = cell["id"]
+    each_port = cell["each"]
+    elements = record["inputs"].get(each_port)
+    if not isinstance(elements, list):
+        problems.append(
+            f"{where}: 'each' port {each_port!r} was piped a non-list "
+            f"({type(elements).__name__}); no sections can be matched"
+        )
+        return idx
+    bind = cell.get("bind", {})
+    element_targets = [t for t, p in bind.items() if p == each_port]
+    element_target = element_targets[0] if element_targets else None
+    fixed = {t: p for t, p in bind.items() if p != each_port}
+    runs = []
+    for i, element in enumerate(elements):
+        idx, inner_values = _consume(
+            inner, resolve, f"{prefix}{cell_id}[{i}]/", records, idx, problems
+        )
+        for target, port in fixed.items():
+            if target in inner_values and inner_values[target] != record["inputs"].get(port):
+                problems.append(
+                    f"{where}: bound interior cell {target!r} in element {i} recorded "
+                    f"{inner_values[target]!r}, but the boundary piped "
+                    f"{record['inputs'].get(port)!r} in"
+                )
+        if (
+            element_target is not None
+            and element_target in inner_values
+            and inner_values[element_target] != element
+        ):
+            problems.append(
+                f"{where}: element cell {element_target!r} in element {i} recorded "
+                f"{inner_values[element_target]!r}, but element {i} is {element!r}"
+            )
+        runs.append(inner_values)
+    if "output" in cell:
+        targets = [cell["output"]]
+        complete = all(cell["output"] in run for run in runs)
+        expected_output = [run[cell["output"]] for run in runs] if complete else None
+    else:
+        targets = list(cell["outputs"].values())
+        complete = all(t in run for run in runs for t in targets)
+        expected_output = (
+            {name: [run[target] for run in runs] for name, target in cell["outputs"].items()}
+            if complete
+            else None
+        )
+    if complete and record["output"] != expected_output:
+        problems.append(
+            f"{where}: boundary output does not equal the interior outputs "
+            "it declares, collected in element order"
+        )
+    return idx
 
 
 def check(trace_path, sheet_path):
@@ -131,9 +223,13 @@ def check(trace_path, sheet_path):
         if header.get("sheet") != sheet["id"]:
             problems.append(f"header names sheet {header.get('sheet')!r}, sheet id is {sheet['id']!r}")
         bindings = header.get("bindings")
-        if not isinstance(bindings, dict) or not bindings:
+        if not isinstance(bindings, dict):
             problems.append("header names no bindings")
             bindings = {}
+        elif not bindings and _tree_has_provider_cells(sheet, resolve):
+            problems.append("header names no bindings, but the sheet resolves provider cells")
+        elif bindings and not _tree_has_provider_cells(sheet, resolve):
+            problems.append("header names bindings, but the sheet resolves no provider cells")
         for key, desc in bindings.items():
             if not isinstance(desc, dict) or "provider" not in desc:
                 problems.append(f"binding {key!r} does not name a provider")

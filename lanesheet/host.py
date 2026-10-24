@@ -24,7 +24,10 @@ the sheet cell's id. Bindings resolve by the same rule at every rung
 -- a binding keyed by a cell id applies to that id in whichever sheet
 document declares it; otherwise the cell's name ("llm", or a tool
 name) decides. The header names every binding the run resolves to at
-any rung, interiors included.
+any rung, interiors included. A `sheet` cell in `each` mode (0.3)
+runs its interior once per element of its list input, exactly as the
+interpreter does -- the fan-out refusals included (runtime.
+each_elements, re-named as HostErrors with the same names).
 
 Providers are duck-typed:
 
@@ -301,8 +304,50 @@ def _run_host(sheet, bindings, providers, resolve, prefix, overrides):
         if cell["kind"] == "sheet":
             inputs = {port: values[src] for port, src in cell.get("inputs", {}).items()}
             inner = common.load_ref(resolve, cell["sheet"])
+            bind = cell.get("bind", {})
+            if "each" in cell:
+                # The 0.3 iteration mode, mirroring the interpreter:
+                # validate the fan-out before any element invocation,
+                # run the interior once per element with the fixed
+                # bindings plus the element, collect the boundary
+                # outputs in element order.
+                each_port = cell["each"]
+                try:
+                    elements = runtime.each_elements(inputs[each_port])
+                except runtime.StubError as exc:
+                    raise HostError(exc.name, f"cell {cell_id!r}: {exc}") from exc
+                element_target = next(t for t, p in bind.items() if p == each_port)
+                fixed = {
+                    target: inputs[port]
+                    for target, port in bind.items()
+                    if port != each_port
+                }
+                sections = []
+                runs = []
+                for i, element in enumerate(elements):
+                    overrides = dict(fixed)
+                    overrides[element_target] = element
+                    inner_lines, inner_values = _run_host(
+                        inner, bindings, providers, resolve,
+                        f"{prefix}{cell_id}[{i}]/", overrides,
+                    )
+                    sections.extend(inner_lines)
+                    runs.append(inner_values)
+                if "output" in cell:
+                    output = [run[cell["output"]] for run in runs]
+                else:
+                    output = {
+                        name: [run[target] for run in runs]
+                        for name, target in cell["outputs"].items()
+                    }
+                values[cell_id] = output
+                lines.append(
+                    runtime.make_trace_line(prefix + cell_id, "sheet", inputs, output)
+                )
+                lines.extend(sections)
+                continue
             inner_overrides = {
-                target: inputs[port] for target, port in cell.get("bind", {}).items()
+                target: inputs[port] for target, port in bind.items()
             }
             inner_lines, inner_values = _run_host(
                 inner, bindings, providers, resolve, prefix + cell_id + "/", inner_overrides

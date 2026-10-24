@@ -1,0 +1,81 @@
+{
+  "fabric_hash": "0x96a40d5272fc5798",
+  "image": "triage-clean-nocrc.quf",
+  "layout": {
+    "crc32": 1674213041,
+    "file_size": 928,
+    "front_end": 642,
+    "kv_count": 14,
+    "sections": [
+      {
+        "kind": 0,
+        "name": "dials",
+        "offset": 672,
+        "size": 96
+      },
+      {
+        "kind": 0,
+        "name": "edges",
+        "offset": 768,
+        "size": 40
+      },
+      {
+        "kind": 0,
+        "name": "routing",
+        "offset": 832,
+        "size": 6
+      },
+      {
+        "kind": 0,
+        "name": "ticks",
+        "offset": 864,
+        "size": 16
+      },
+      {
+        "kind": 0,
+        "name": "steps",
+        "offset": 896,
+        "size": 12
+      }
+    ]
+  },
+  "notes": "decisions and underdetermined bytes: QUF-NOTES.md",
+  "per_cell_hashes": {
+    "1": "0x7dfe8368e40da141",
+    "2": "0x4d581b1d46d5c84c",
+    "3": "0xa9215e5baf39d98f"
+  },
+  "producer": "lanesheet-quf 0.1",
+  "sketch_elements": {
+    "kv_keys": [
+      "lanesheet.version",
+      "lanesheet.name",
+      "lanesheet.source_sha256",
+      "lanesheet.cell_ids"
+    ],
+    "rule": "QUF-SPEC S8 rules 1/3/6: unknown KV keys and section names are skipped; neither bumps version",
+    "sections": [
+      "steps"
+    ]
+  },
+  "source": {
+    "file": "triage-clean.json",
+    "name": "triage-clean",
+    "sha256": "04e8802a41d01f16cb4d74e014ffce7849b11c8e8931bafaf33c125fff236752"
+  },
+  "spec_optional_elements": {
+    "crc32_kv": "QUF-SPEC S12.2"
+  },
+  "subset": {
+    "excluded_cells": [],
+    "excluded_edges": [],
+    "excluded_run_events": [],
+    "included_cells": [
+      1,
+      2,
+      3
+    ],
+    "included_edges": 2,
+    "included_steps": 1
+  }
+}

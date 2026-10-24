@@ -1,0 +1,1 @@
+{"id":"echo-item","lanes":[{"cells":[{"id":"input.item","kind":"value","value":0},{"id":"output.echo","inputs":{"item":"input.item"},"kind":"prompt","template":"item {{item}}"}],"id":"main"}],"lanesheet":"0.1","outputs":["output.echo"],"title":"The smallest interior for a fan-out: echo the element it was bound"}

@@ -20,8 +20,8 @@ python3 -m venv .venv
 .venv/bin/pip install langgraph
 
 .venv/bin/python run_conformance.py
-# SUMMARY: 14/14 PASS   (interpreter vs golden vs lifted LangGraph,
-#                        byte-for-byte, plus three named refusals)
+# SUMMARY: 27/27 PASS   (interpreter vs golden vs lifted LangGraph,
+#                        byte-for-byte, plus eight named refusals)
 
 python3 downward/run_quf_check.py
 # SUMMARY: 45/45 PASS   (QUF writer/reader for the clean subset:
@@ -44,18 +44,24 @@ producing identical traces, never by trusting each other.
 
 ## What's here
 
-- **The format (SPEC.md + SPEC-AMENDMENT.md).** Six cell kinds:
-  `value`, `prompt`, `llm`, `tool`, `branch` (0.1) and `sheet` (0.2) —
-  a cell whose interior is another sheet, bound only at its ports.
-  Kinds are reduced from the nine of the SuperInstance `quilt` sheet
-  runtime, whose agent-as-sheet mapping (`quilt-agent`) this format
-  descends from; the lineage is cited construct by construct.
+- **The format (SPEC.md + SPEC-AMENDMENT.md + SPEC-AMENDMENT-0.3.md).**
+  Six cell kinds: `value`, `prompt`, `llm`, `tool`, `branch` (0.1) and
+  `sheet` (0.2) — a cell whose interior is another sheet, bound only
+  at its ports — and, since 0.3, a mode of the `sheet` cell: `each`,
+  the interior applied once per element of a piped list, results
+  collected in element order. Kinds are reduced from the nine of the
+  SuperInstance `quilt` sheet runtime, whose agent-as-sheet mapping
+  (`quilt-agent`) this format descends from; the lineage is cited
+  construct by construct.
 - **The interpreter and the lifter** (`lanesheet/`): a stdlib
   reference interpreter, and a lifter producing standalone LangGraph
-  modules. Fourteen conformance fixtures: linear chains, branches, a
-  tool feeding a prompt, two lanes joining, a sheet used once, the
+  modules. Twenty-seven conformance fixtures: linear chains, branches,
+  a tool feeding a prompt, two lanes joining, a sheet used once, the
   same sheet reused by two cells (the plugin shape), two-level
-  nesting, and three refusals (cycle, listener kind, recursive sheet).
+  nesting, iteration over three elements and over none, iteration
+  inside a sheet and over interiors that themselves nest, a fan-out
+  at the 100-element cap — and eight refusals (cycle, listener kind,
+  recursive sheet, and the five `each` refusals).
 - **The host (HOST.md).** A binding layer: `llm`/`tool` names in a
   sheet are bound by host config to real providers — MiniMax first.
   Live runs emit the same canonical trace behind a header that names
@@ -72,8 +78,28 @@ producing identical traces, never by trusting each other.
   round-trip reconstruction, and agreement by the fabric's canonical
   hash — 45 checks, including the spec's own published golden vector.
   Every byte the spec leaves open is decided and named in
-  QUF-NOTES.md. It is still not a compiler, and no HDL tooling has
-  loaded these images — that claim is not made.
+  QUF-NOTES.md. It is still not a compiler — but the images are no
+  longer merely loadable-shaped: `downward/FALSIFIER.md` records the
+  quilt-verilog fabric's own RTL loader consuming one in Icarus
+  Verilog simulation and the `quf_boot` testbench releasing the
+  fabric from it (state RUN, dial row live). One blocker was found
+  and isolated on the way: the spec's crc32 digest scope is
+  underdetermined (QUF-NOTES **D9**) — the Python tooling digests
+  all sections, the RTL loader only its four payload sections — so
+  the writer grew a `--no-crc32` flag (the digest is opt-in per
+  §12.2) and `triage-clean-nocrc.quf` is the image that boots.
+  Simulation, not silicon; no workflow has run on the fabric —
+  `steps` is skipped by the loader, which is the unbuilt QUIL
+  question.
+- **Sheets as git.pp records (`gitpp/`).** A converter pair plus a
+  minimal fold port proves the round trip: sheet → records in the
+  `.gitpp/records` layout → reconstruction *by the fold alone*
+  (arrival order shuffled, state identical) → interpreter trace
+  byte-identical to the golden. Conflict behaviour is executed, not
+  argued: an override record wins a cell's definition, a descendant
+  redefinition dominates its ancestor, an equal-class sibling loses
+  and is named. Installing a plugin sheet is landing its records;
+  uninstall is honestly not a fold operation yet (GITPP-SPIKE.md).
 
 ## The model in five minutes
 
@@ -100,7 +126,9 @@ producing identical traces, never by trusting each other.
 
 ## Honest limits
 
-Lane sheets do **not** have: loops or cycles (refused), lazy
+Lane sheets do **not** have: general loops or cycles (refused) —
+iteration is exactly the `each` mode, a pre-existing list mapped
+through one interior sheet, capped at 100 elements per cell — lazy
 branching, stored run state or checkpointing, push cell kinds
 (listeners, sensors), arbitrary code cells, parallel-scheduling
 semantics, or predicates beyond equality and truthiness. The lifter
@@ -112,7 +140,8 @@ do not cross downward yet.
 
 ## Layout
 
-- `SPEC.md`, `SPEC-AMENDMENT.md` — the format (0.1 + the `sheet` kind)
+- `SPEC.md`, `SPEC-AMENDMENT.md`, `SPEC-AMENDMENT-0.3.md` — the
+  format (0.1 + the `sheet` kind + the `each` mode)
 - `lanesheet/` — `runtime.py` (shared deterministic runtime, embedded
   verbatim into every lifted module), `common.py` (validation,
   canonical order, sheet resolution), `interpret.py`,
@@ -123,6 +152,9 @@ do not cross downward yet.
 - `HOST.md` — the binding layer and the two-tier law
 - `downward/` — DOWNWARD.md (opcode mapping), `lanesheet_emit.py`
   (opcode listings), `quf_write.py` / `quf_read.py` /
-  `run_quf_check.py` / QUF-NOTES.md (the QUF subset)
+  `run_quf_check.py` / QUF-NOTES.md (the QUF subset), FALSIFIER.md
+  (the RTL load record), `hdl/` (the variant testbenches)
+- `gitpp/` — GITPP-SPIKE.md, `sheet_to_records.py`,
+  `records_to_sheet.py`, `fold.py`, `run_spike_check.py`
 - `docs/SHELF-STUDY.md` — the survey of the SuperInstance substrate
   shelf (quilt in Verilog, VHDL, Rust, and a dozen more) this builds on

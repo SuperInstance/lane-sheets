@@ -1,0 +1,20 @@
+{
+  "effects": {
+    "cell.use.second.def": {
+      "bind": {
+        "input.text": "text"
+      },
+      "output": "output.report",
+      "sheet": "word-frame"
+    },
+    "cell.use.second.inputs": {
+      "text": "input.b"
+    },
+    "cell.use.second.kind": "sheet"
+  },
+  "id": "cell-use.second",
+  "kind": "task",
+  "parents": [
+    "cell-input.b"
+  ]
+}

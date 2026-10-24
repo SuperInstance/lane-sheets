@@ -1,0 +1,24 @@
+{
+  "effects": {
+    "sheet.id": "linear-chain",
+    "sheet.lanes": [
+      {
+        "cells": [
+          "input.topic",
+          "reasoning.prompt",
+          "reasoning.answer",
+          "output.framed"
+        ],
+        "id": "main"
+      }
+    ],
+    "sheet.lanesheet": "0.1",
+    "sheet.outputs": [
+      "output.framed"
+    ],
+    "sheet.title": "A linear prompt chain: topic -> prompt -> llm -> framed answer"
+  },
+  "id": "sheet-linear-chain",
+  "kind": "task",
+  "parents": []
+}

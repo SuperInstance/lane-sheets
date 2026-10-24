@@ -188,7 +188,7 @@ def align_up(n, a=ALIGN):
     return (n + a - 1) // a * a
 
 
-def build_image(subset, source_name, source_sha256, extra_sections=()):
+def build_image(subset, source_name, source_sha256, extra_sections=(), emit_crc=True):
     """Assemble the QUF image. Returns (bytes, layout_dict)."""
     emit.validate(subset)  # emitter's own gate: ids, dials, bases, kinds
     if subset.get("tick_tpw") is None:
@@ -223,13 +223,13 @@ def build_image(subset, source_name, source_sha256, extra_sections=()):
         kv_string("quant.edges", "Q1.15"),
         kv_string("quant.routing", "u8"),
         kv_u32("align", ALIGN),
-        kv_u32("crc32", crc),
+        *([kv_u32("crc32", crc)] if emit_crc else []),
         kv_string("lanesheet.version", LANESHEET_VERSION),
         kv_string("lanesheet.name", source_name),
         kv_string("lanesheet.source_sha256", source_sha256),
         kv_u64_array("lanesheet.cell_ids", [c["id"] for c in cells]),
     ])
-    kv_count = 15
+    kv_count = 15 if emit_crc else 14
 
     table_len = 4 + sum(4 + len(n) + 4 + 8 + 8 for n, _, _ in sections)
     front_end = 16 + len(kv) + table_len
@@ -278,14 +278,14 @@ def fabric_hash(subset):
     return emit.fnv1a(bytes(blob)), per_cell
 
 
-def write_workflow(wf_path, out_path, extra_sections=()):
+def write_workflow(wf_path, out_path, extra_sections=(), emit_crc=True):
     with open(wf_path, "rb") as f:
         raw = f.read()
     wf = json.loads(raw.decode("utf-8"))
     source_sha256 = hashlib.sha256(raw).hexdigest()
     subset, report = clean_subset(wf)
     img, layout = build_image(subset, wf["name"], source_sha256,
-                              extra_sections)
+                              extra_sections, emit_crc=emit_crc)
     fhash, per_cell = fabric_hash(subset)
     with open(out_path, "wb") as f:
         f.write(img)
@@ -316,10 +316,14 @@ def write_workflow(wf_path, out_path, extra_sections=()):
 
 
 def main(argv):
+    emit_crc = True
+    if len(argv) == 4 and argv[3] == "--no-crc32":
+        emit_crc = False
+        argv = argv[:3]
     if len(argv) != 3:
         print(__doc__)
         return 2
-    m = write_workflow(argv[1], argv[2])
+    m = write_workflow(argv[1], argv[2], emit_crc=emit_crc)
     lay = m["layout"]
     print(f"wrote {argv[2]} ({lay['file_size']} bytes, "
           f"kv_count {lay['kv_count']}, "

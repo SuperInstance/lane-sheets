@@ -1,0 +1,14 @@
+{
+  "effects": {
+    "cell.input.a.def": {
+      "value": "the active ledger"
+    },
+    "cell.input.a.inputs": {},
+    "cell.input.a.kind": "value"
+  },
+  "id": "cell-input.a",
+  "kind": "task",
+  "parents": [
+    "sheet-sheet-reused"
+  ]
+}

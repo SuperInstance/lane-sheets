@@ -1,0 +1,14 @@
+{
+  "effects": {
+    "cell.input.topic.def": {
+      "value": "the active ledger"
+    },
+    "cell.input.topic.inputs": {},
+    "cell.input.topic.kind": "value"
+  },
+  "id": "cell-input.topic",
+  "kind": "task",
+  "parents": [
+    "sheet-linear-chain"
+  ]
+}

@@ -34,6 +34,8 @@ __all__ = [
     "TOOL_SIGNATURES",
     "call_tool",
     "select_branch",
+    "MAX_EACH_ELEMENTS",
+    "each_elements",
 ]
 
 
@@ -180,6 +182,42 @@ def call_tool(name, args):
                 f"tool {name!r} argument {port!r} must be a string, got {type(args[port]).__name__}",
             )
     return fn(args)
+
+
+# ---------------------------------------------------------------------------
+# Iteration (0.3): the `each` mode of a `sheet` cell
+# ---------------------------------------------------------------------------
+
+# The fan-out cap for one `each` cell (SPEC-AMENDMENT-0.3 section 2).
+# 100 elements is generous for the fan-outs a sheet expresses (batch
+# definition, batch counting, per-item framing) while keeping one
+# cell's trace section a readable receipt and a lifted node's loop a
+# loop, not a workload. The cap is spec, in this module, so every
+# engine refuses the same count with the same name.
+MAX_EACH_ELEMENTS = 100
+
+
+def each_elements(value):
+    """Validate an `each` port's value and return its element list.
+
+    The value a cell pipes into its `each` port must be a list of at
+    most MAX_EACH_ELEMENTS elements. Anything else is a named refusal,
+    raised identically by every engine before any element invocation
+    runs -- a fan-out never starts and then discovers it should not
+    have.
+    """
+    if not isinstance(value, list):
+        raise StubError(
+            "EachInputNotList",
+            f"an 'each' port must be piped a list, got {type(value).__name__}",
+        )
+    if len(value) > MAX_EACH_ELEMENTS:
+        raise StubError(
+            "EachTooManyElements",
+            f"'each' fan-out of {len(value)} elements exceeds the cap of "
+            f"{MAX_EACH_ELEMENTS}",
+        )
+    return value
 
 
 # ---------------------------------------------------------------------------

@@ -20,6 +20,12 @@ cell's id (`wrap.chain/reasoning.prompt`). The outer run's values
 never contain interior values other than the declared boundary
 output -- the interior is sovereign; only the piping crosses.
 
+A `sheet` cell in `each` mode (0.3, SPEC-AMENDMENT-0.3.md) runs its
+interior once per element of the list piped to its `each` port: one
+boundary line (the full input map in, the list of boundary outputs
+out), then the per-element interior sections in element order, their
+prefixes indexed `fan.define[0]/`, `fan.define[1]/`, ...
+
 Usage: python -m lanesheet.interpret <sheet.json>
 """
 
@@ -77,8 +83,53 @@ def _run(sheet, resolve, prefix, overrides):
         if cell["kind"] == "sheet":
             inputs = {port: values[src] for port, src in cell.get("inputs", {}).items()}
             inner = common.load_ref(resolve, cell["sheet"])
+            bind = cell.get("bind", {})
+            if "each" in cell:
+                # The 0.3 iteration mode: the interior sheet runs once
+                # per element of the list piped to the `each` port.
+                # The list shape and the fan-out cap are checked
+                # before any element invocation runs (runtime.
+                # each_elements, shared by every engine). Fixed bind
+                # entries apply identically to every invocation; the
+                # one element entry receives the element itself.
+                each_port = cell["each"]
+                try:
+                    elements = runtime.each_elements(inputs[each_port])
+                except runtime.StubError as exc:
+                    raise common.LaneSheetError(
+                        exc.name, f"cell {cell_id!r}: {exc}"
+                    ) from exc
+                element_target = next(t for t, p in bind.items() if p == each_port)
+                fixed = {
+                    target: inputs[port]
+                    for target, port in bind.items()
+                    if port != each_port
+                }
+                sections = []
+                runs = []
+                for i, element in enumerate(elements):
+                    overrides = dict(fixed)
+                    overrides[element_target] = element
+                    inner_lines, inner_values = _run(
+                        inner, resolve, f"{prefix}{cell_id}[{i}]/", overrides
+                    )
+                    sections.extend(inner_lines)
+                    runs.append(inner_values)
+                if "output" in cell:
+                    output = [run[cell["output"]] for run in runs]
+                else:
+                    output = {
+                        name: [run[target] for run in runs]
+                        for name, target in cell["outputs"].items()
+                    }
+                values[cell_id] = output
+                lines.append(
+                    runtime.make_trace_line(prefix + cell_id, "sheet", inputs, output)
+                )
+                lines.extend(sections)
+                continue
             inner_overrides = {
-                target: inputs[port] for target, port in cell.get("bind", {}).items()
+                target: inputs[port] for target, port in bind.items()
             }
             inner_lines, inner_values = _run(
                 inner, resolve, prefix + cell_id + "/", inner_overrides

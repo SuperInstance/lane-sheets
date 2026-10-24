@@ -10,6 +10,11 @@ For every positive fixture in fixtures/:
 For every negative fixture (fixtures/negative-*.sheet.json with a
 <name>.expected.json sidecar naming the expected refusal): both the
 interpreter and the lifter must refuse with exactly that error name.
+A sidecar may declare "phase": "runtime" for a data-dependent
+refusal (0.3: a non-list `each` input, an over-cap fan-out): the
+sheet then validates and lifts cleanly, the interpreter refuses
+while running, and the lifted module must exit non-zero with the
+same refusal name in its output.
 
 Sheet references (0.2 `sheet` cells) resolve against the fixtures
 directory itself -- the fixture-local library: linear-chain doubles
@@ -73,7 +78,9 @@ def check_positive(sheet_path):
 
 def check_negative(sheet_path):
     name = sheet_path.name.replace(".sheet.json", "")
-    expected = json.loads((FIXTURES / f"{name}.expected.json").read_text(encoding="utf-8"))["error"]
+    sidecar = json.loads((FIXTURES / f"{name}.expected.json").read_text(encoding="utf-8"))
+    expected = sidecar["error"]
+    phase = sidecar.get("phase", "validation")
     problems = []
 
     sheet = None
@@ -85,13 +92,37 @@ def check_negative(sheet_path):
         if exc.name != expected:
             problems.append(f"interpreter refused with {exc.name}, expected {expected}")
 
-    if sheet is not None:
+    if sheet is not None and phase == "validation":
         try:
             lift_langgraph.lift(sheet, resolve=RESOLVER)
             problems.append("lifter accepted the sheet")
         except common.LaneSheetError as exc:
             if exc.name != expected:
                 problems.append(f"lifter refused with {exc.name}, expected {expected}")
+    elif sheet is not None and phase == "runtime":
+        # The sheet validates and lifts cleanly; the refusal is in
+        # the data, so it must fire when the lifted module RUNS.
+        try:
+            source = lift_langgraph.lift(sheet, resolve=RESOLVER)
+        except common.LaneSheetError as exc:
+            problems.append(f"lifter refused a runtime-phase sheet with {exc.name}")
+            source = None
+        if source is not None:
+            LIFTED.mkdir(exist_ok=True)
+            lifted_path = LIFTED / f"{name}_lifted.py"
+            lifted_path.write_text(source, encoding="utf-8")
+            proc = subprocess.run(
+                [sys.executable, str(lifted_path)],
+                capture_output=True,
+                cwd=str(ROOT),
+            )
+            if proc.returncode == 0:
+                problems.append("lifted module ran a sheet it should have refused at run time")
+            elif expected.encode() not in proc.stderr:
+                problems.append(
+                    f"lifted module exited {proc.returncode} without naming {expected}: "
+                    f"{proc.stderr.decode('utf-8', 'replace')[-300:]}"
+                )
 
     status = "PASS" if not problems else "FAIL"
     print(f"{status} {name} (refusal: {expected})" + ("" if not problems else " -- " + "; ".join(problems)))

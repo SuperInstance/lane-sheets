@@ -3,6 +3,10 @@
 > **0.2:** the `sheet` cell kind (sub-sheet composition) is specified
 > in `SPEC-AMENDMENT.md`, which extends this document. Everything
 > below is the 0.1 format and remains in force unchanged.
+>
+> **0.3:** the `each` mode of a `sheet` cell (iteration: the interior
+> sheet applied per element of a piped list) is specified in
+> `SPEC-AMENDMENT-0.3.md`, which extends both documents.
 
 **SuperInstance.** Agent workflows as *sheet data*: one abstraction below
 LangChain/LangGraph, the way Verilog sits below C and Python. A workflow

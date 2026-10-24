@@ -6,4 +6,4 @@ by piping only, whose run state is derived by execution and never
 stored in the sheet. See SPEC.md.
 """
 
-__version__ = "0.2"
+__version__ = "0.3"

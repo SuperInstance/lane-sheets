@@ -26,6 +26,13 @@ silently wrong one. The generated module:
     cell's id. The subgraph is opaque to the outer graph exactly as
     the interior sheet is opaque to the outer sheet: only seeds go in,
     only the boundary output and the prefixed trace come out.
+  * a `sheet` cell in `each` mode (0.3, SPEC-AMENDMENT-0.3.md) emits
+    the same site unit; its node validates the fan-out list via the
+    embedded runtime (runtime.each_elements -- the interpreter's own
+    named refusals) and invokes the unit once per element, in element
+    order, collecting the boundary outputs into a list and
+    re-prefixing each element's section with the indexed site prefix
+    (`fan.define[0]/`, `fan.define[1]/`, ...).
 
 Usage: python -m lanesheet.lift_langgraph <sheet.json> <out.py>
 """
@@ -90,6 +97,52 @@ class _Builder:
             )
         elif kind == "sheet":
             sub = _suffix(qualified)
+            if "each" in cell:
+                # The 0.3 iteration mode: the node validates the
+                # fan-out (runtime.each_elements -- the same named
+                # refusals), then invokes the site unit once per
+                # element, in element order, re-prefixing each
+                # element's section with the indexed site prefix.
+                each_port = cell["each"]
+                bind = cell.get("bind", {})
+                element_target = next(t for t, p in bind.items() if p == each_port)
+                fixed = ", ".join(
+                    f"{target!r}: inputs[{port!r}]"
+                    for target, port in bind.items()
+                    if port != each_port
+                )
+                lines.append(f"    _items = each_elements(inputs[{each_port!r}])")
+                lines.append(f"    _fixed = {{{fixed}}}")
+                lines.append("    _sections = []")
+                lines.append("    _runs = []")
+                lines.append("    for _i, _item in enumerate(_items):")
+                lines.append("        _seeds = dict(_fixed)")
+                lines.append(f"        _seeds[{element_target!r}] = _item")
+                lines.append(f"        _iv, _il = run_sub_{sub}(_seeds)")
+                lines.append("        _runs.append(_iv)")
+                lines.append("        for _l in _il:")
+                lines.append("            _rec = json.loads(_l)")
+                lines.append(
+                    f"            _rec['cell'] = {cell_id!r} + '[' + str(_i) + ']/' + _rec['cell']"
+                )
+                lines.append("            _sections.append(canonical_json(_rec))")
+                if "output" in cell:
+                    lines.append(
+                        f"    output = [_run[{cell['output']!r}] for _run in _runs]"
+                    )
+                else:
+                    pairs = ", ".join(
+                        f"{out_name!r}: [_run[{target!r}] for _run in _runs]"
+                        for out_name, target in cell["outputs"].items()
+                    )
+                    lines.append(f"    output = {{{pairs}}}")
+                lines.append(f"    line = make_trace_line({cell_id!r}, 'sheet', inputs, output)")
+                lines.append("    _lines = [line]")
+                lines.append("    _lines.extend(_sections)")
+                lines.append(
+                    f'    return {{"values": {{{cell_id!r}: output}}, "trace_lines": _lines}}'
+                )
+                return "\n".join(lines)
             seeds = ", ".join(
                 f"{target!r}: inputs[{port!r}]"
                 for target, port in cell.get("bind", {}).items()

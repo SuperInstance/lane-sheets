@@ -1,0 +1,16 @@
+{
+  "effects": {
+    "cell.output.framed.def": {
+      "template": "Answer: {{answer}}"
+    },
+    "cell.output.framed.inputs": {
+      "answer": "reasoning.answer"
+    },
+    "cell.output.framed.kind": "prompt"
+  },
+  "id": "cell-output.framed",
+  "kind": "task",
+  "parents": [
+    "cell-reasoning.answer"
+  ]
+}

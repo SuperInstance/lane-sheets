@@ -13,7 +13,7 @@ header that keeps the two worlds unmistakable.
   the golden traces run on the deterministic stubs in
   `lanesheet/runtime.py` only. Byte-exact, reproducible, quarantined:
   the host never touches this path, and this path never sees a live
-  model. It passes 14/14, untouched.
+  model. It passes 27/27, untouched.
 - **Tier 2 — live runs.** A host run is *evidence of a run*, not a
   conformance object. Live model output is nondeterministic, so no
   host trace is ever compared byte-for-byte with anything. Every host
@@ -116,6 +116,29 @@ The nested live example (outer sheet invokes an inner sheet whose
 python3 -m lanesheet.host examples/live-nested.sheet.json examples/minimax.bindings.json
 python3 run_host_check.py examples/live-nested.trace.jsonl examples/live-nested.sheet.json
 ```
+
+## Iteration: `each` cells under the host (0.3)
+
+An `each` cell (SPEC-AMENDMENT-0.3.md) runs under the host exactly
+as under the interpreter: the fan-out is validated before any
+element invocation (`EachInputNotList`, `EachTooManyElements`,
+re-named as host errors with the same names), the interior runs
+once per element with the fixed bindings plus the element, and the
+trace shows the boundary line followed by the indexed per-element
+sections. Bindings resolve per element invocation by the same rule
+— an `llm` cell inside the interior resolves (and, live, calls) per
+element. With stub bindings, a host trace's body is byte-identical
+to the conformance golden, as with plain sheet cells.
+
+`run_host_check.py` validates these traces structurally (one
+section per element, element outputs matching their elements,
+boundary output equal to the collected interior outputs). One
+header rule the 0.3 corpus is the first to exercise: a sheet tree
+with **no provider cells at all** (the provider-free `echo-item`
+and `each-at-cap` fixtures) honestly resolves no bindings, so its
+header names none — the checker accepts empty bindings iff the
+tree is provider-free, and fails a header that names bindings for
+such a sheet.
 
 ## Honest limits
 

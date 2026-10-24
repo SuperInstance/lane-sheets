@@ -1,0 +1,35 @@
+{
+  "effects": {
+    "sheet.id": "sheet-reused",
+    "sheet.lanes": [
+      {
+        "cells": [
+          "input.a",
+          "use.first"
+        ],
+        "id": "first"
+      },
+      {
+        "cells": [
+          "input.b",
+          "use.second"
+        ],
+        "id": "second"
+      },
+      {
+        "cells": [
+          "join.summary"
+        ],
+        "id": "join"
+      }
+    ],
+    "sheet.lanesheet": "0.2",
+    "sheet.outputs": [
+      "join.summary"
+    ],
+    "sheet.title": "The same inner sheet used by two outer cells: reuse is the plugin shape"
+  },
+  "id": "sheet-sheet-reused",
+  "kind": "task",
+  "parents": []
+}

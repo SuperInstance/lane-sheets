@@ -228,6 +228,29 @@ would reject the shelf's canonical file; this one doesn't.)
 
 ---
 
+## Addendum (falsifier lane): D9 — the crc32 scope is underdetermined
+
+Loading `triage-clean.quf` into the quilt-verilog RTL loader
+(Icarus Verilog, `FALSIFIER.md` in this directory) isolated a ninth
+underdetermination the static work could not see. QUF-SPEC §12.2
+says the `crc32` digest covers "section data in table order"
+without scoping it to *known* sections. The shelf's two readers
+disagree: `tools/quf.py` digests **all** table sections (including
+the §8-legal `steps` extension); `q_uf_loader.v` accumulates only
+over its four payload states. This writer followed `quf.py` — and
+the RTL loader therefore stops with err 12 (E_CRC) after consuming
+882 bytes of an otherwise exact image. Patching the copy's KV to
+the four-section value loads cleanly, and omitting the digest
+loads cleanly: the digest is opt-in per §12.2 ("undigested files
+load exactly as before"), so `quf_write.py` now offers
+`--no-crc32`, and `triage-clean-nocrc.quf` is the booting image.
+Neither default was flipped silently: which scope the spec means
+is a ruling for the spec's owners, recorded here as **D9**. On any
+file *without* extension sections the two readings coincide —
+which is why the shelf never tripped over it.
+
+---
+
 *QUF-NOTES — SuperInstance downward lane 2. Built artefacts:
 `quf_write.py`, `quf_read.py`, `run_quf_check.py` (45/45),
 `triage-clean.quf`, `triage-mini.quf` and their manifests. No

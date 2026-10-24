@@ -11,6 +11,14 @@ reference against a sheet library (a resolver callable), checks the
 reference chain for recursion and excessive depth, validates the
 referenced sheet recursively, and checks the port mapping (bind /
 output) against the referenced sheet's cells.
+
+Lane-sheet 0.3 (SPEC-AMENDMENT-0.3.md) adds the `each` mode of a
+`sheet` cell: the cell names one input port carrying a list, and the
+interior sheet runs once per element, the element bound to a
+designated interior `value` cell. Validation checks the each port is
+piped and bound to exactly one element cell; the list-ness and the
+fan-out cap are run-time checks (runtime.each_elements), shared by
+every engine.
 """
 
 import json
@@ -19,8 +27,8 @@ from pathlib import Path
 
 from . import runtime
 
-FORMAT_VERSION = "0.2"
-SUPPORTED_VERSIONS = ("0.1", "0.2")
+FORMAT_VERSION = "0.3"
+SUPPORTED_VERSIONS = ("0.1", "0.2", "0.3")
 
 CELL_KINDS = ("value", "prompt", "llm", "tool", "branch", "sheet")
 
@@ -50,7 +58,7 @@ _KIND_KEYS = {
     "llm": set(),
     "tool": {"tool"},
     "branch": {"equals"},
-    "sheet": {"sheet", "bind", "output", "outputs"},
+    "sheet": {"sheet", "bind", "output", "outputs", "each"},
 }
 _RESERVED_IDS = {"START", "END"}
 
@@ -179,6 +187,14 @@ def validate_sheet(sheet, resolve=None, _chain=()):
                     "UnsupportedVersion",
                     f"cell {cell['id']!r}: 'sheet' cells require lanesheet 0.2; "
                     "this sheet declares 0.1",
+                )
+    if sheet["lanesheet"] != "0.3":
+        for cell in cells.values():
+            if cell["kind"] == "sheet" and "each" in cell:
+                _fail(
+                    "UnsupportedVersion",
+                    f"cell {cell['id']!r}: the 'each' mode requires lanesheet 0.3; "
+                    f"this sheet declares {sheet['lanesheet']}",
                 )
     _validate_sheet_cells(sheet, cells, resolve, _chain)
     return sheet
@@ -320,6 +336,42 @@ def _validate_cell(cell, cells, positions, position):
                 f"sheet cell {cell_id!r}: 'bind' must be an object mapping interior "
                 "cell ids to input port names",
             )
+        if "each" in cell:
+            # The 0.3 iteration mode (SPEC-AMENDMENT-0.3.md). The each
+            # port must be piped, and exactly one bind entry must map
+            # an interior cell to it -- that entry designates the
+            # element cell. These checks run before port correspondence
+            # because they are the more specific diagnosis: an unbound
+            # each port is not merely an unbound pipe, it is a fan-out
+            # with no element to land on.
+            each = cell["each"]
+            if not isinstance(each, str) or not each:
+                _fail(
+                    "MissingField",
+                    f"sheet cell {cell_id!r}: 'each' must be the name of an input port",
+                )
+            if each not in inputs:
+                _fail(
+                    "EachPortNotPiped",
+                    f"sheet cell {cell_id!r}: 'each' names port {each!r}, which is "
+                    "not among the cell's piped inputs",
+                )
+            element_targets = [t for t, p in bind.items() if p == each]
+            if not element_targets:
+                _fail(
+                    "EachElementUnbound",
+                    f"sheet cell {cell_id!r}: no bind entry maps an interior cell "
+                    f"to the 'each' port {each!r}; a fan-out needs a designated "
+                    "element cell to land each element on",
+                )
+            if len(element_targets) > 1:
+                _fail(
+                    "EachElementConflict",
+                    f"sheet cell {cell_id!r}: bind entries {sorted(element_targets)} "
+                    f"all map to the 'each' port {each!r}; exactly one element "
+                    "cell may be designated -- pipe inside the interior if two "
+                    "cells need the element",
+                )
         # Port correspondence is exact: every bound port is piped, and
         # every piped port is bound. An unbound pipe into a sub-sheet
         # would be a value crossing the boundary to nowhere.
