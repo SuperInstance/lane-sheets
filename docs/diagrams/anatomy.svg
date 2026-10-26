@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 660" width="100%" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" fill="#1a1d21">
+  <title>Anatomy of a lane sheet</title>
+  <desc>Three lanes — input, reasoning, output — wired together only by named piping. A nested sheet cell stays opaque from this rung.</desc>
+  <defs>
+    <marker id="arr" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" refX="9.5" refY="5.5" orient="auto">
+      <path d="M0,0 L11,5.5 L0,11 Z" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1000" height="660" fill="#ffffff"/>
+
+  <text x="40" y="52" font-size="26" font-weight="700">Anatomy of a lane sheet</text>
+
+  <!-- sheet frame -->
+  <rect x="40" y="85" width="920" height="460" rx="12" fill="#ffffff" stroke="#1a1d21" stroke-width="1.6"/>
+  <text x="946" y="110" text-anchor="end" font-size="12.5" fill="#94a3b8">sheet · answer-builder</text>
+  <line x1="42" y1="225" x2="958" y2="225" stroke="#e2e8f0" stroke-dasharray="5 6"/>
+  <line x1="42" y1="385" x2="958" y2="385" stroke="#e2e8f0" stroke-dasharray="5 6"/>
+  <line x1="105" y1="89" x2="105" y2="541" stroke="#e2e8f0" stroke-dasharray="5 6"/>
+
+  <text transform="rotate(-90 72 155)" x="72" y="155" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="4" fill="#94a3b8">INPUT</text>
+  <text transform="rotate(-90 72 305)" x="72" y="305" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="4" fill="#94a3b8">REASONING</text>
+  <text transform="rotate(-90 72 465)" x="72" y="465" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="4" fill="#94a3b8">OUTPUT</text>
+
+  <!-- named piping -->
+  <g stroke="#2563eb" stroke-width="1.8" fill="none">
+    <path d="M205,192 L205,265" marker-end="url(#arr)"/>
+    <path d="M425,192 C425,236 250,228 250,265" marker-end="url(#arr)"/>
+    <path d="M280,305 L356,305" marker-end="url(#arr)"/>
+    <path d="M510,305 L586,305" marker-end="url(#arr)"/>
+    <path d="M740,305 L806,305" marker-end="url(#arr)"/>
+    <path d="M885,354 C885,398 640,386 640,426" marker-end="url(#arr)"/>
+    <path d="M720,467 L786,467" marker-end="url(#arr)"/>
+  </g>
+  <g font-size="13">
+    <text x="214" y="233" style="paint-order:stroke" stroke="#ffffff" stroke-width="4" stroke-linejoin="round">subject</text>
+    <text x="334" y="215" text-anchor="middle" style="paint-order:stroke" stroke="#ffffff" stroke-width="4" stroke-linejoin="round">guide</text>
+    <text x="318" y="296" text-anchor="middle">draft</text>
+    <text x="548" y="296" text-anchor="middle">query</text>
+    <text x="773" y="296" text-anchor="middle">evidence</text>
+    <text x="762" y="414" text-anchor="middle">body</text>
+    <text x="753" y="458" text-anchor="middle">text</text>
+  </g>
+
+  <!-- cells -->
+  <g stroke="#1a1d21" stroke-width="1.5" fill="#ffffff">
+    <rect x="130" y="120" width="150" height="70" rx="8"/>
+    <rect x="340" y="120" width="170" height="70" rx="8"/>
+    <rect x="130" y="268" width="150" height="74" rx="8"/>
+    <rect x="360" y="268" width="150" height="74" rx="8"/>
+    <rect x="590" y="268" width="150" height="74" rx="8"/>
+    <rect x="810" y="258" width="150" height="94" rx="8"/>
+    <rect x="560" y="430" width="160" height="74" rx="8"/>
+    <rect x="790" y="430" width="150" height="74" rx="8"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="205" y="151" font-size="17" font-weight="700">topic</text>
+    <text x="205" y="170" font-size="13" fill="#2563eb">value</text>
+    <text x="425" y="151" font-size="17" font-weight="700">instructions</text>
+    <text x="425" y="170" font-size="13" fill="#2563eb">prompt</text>
+    <text x="205" y="299" font-size="17" font-weight="700">plan</text>
+    <text x="205" y="318" font-size="13" fill="#2563eb">llm</text>
+    <text x="435" y="299" font-size="17" font-weight="700">pick</text>
+    <text x="435" y="318" font-size="13" fill="#2563eb">branch</text>
+    <text x="665" y="299" font-size="17" font-weight="700">fetch</text>
+    <text x="665" y="318" font-size="13" fill="#2563eb">tool</text>
+    <text x="885" y="280" font-size="17" font-weight="700">digest</text>
+    <text x="885" y="297" font-size="13" fill="#2563eb">sheet</text>
+    <text x="640" y="461" font-size="17" font-weight="700">render</text>
+    <text x="640" y="480" font-size="13" fill="#2563eb">tool</text>
+    <text x="865" y="461" font-size="17" font-weight="700">answer</text>
+    <text x="865" y="480" font-size="13" fill="#2563eb">value</text>
+  </g>
+
+  <!-- nested sheet cell: opaque from this rung -->
+  <rect x="826" y="306" width="118" height="38" rx="4" fill="#f8fafc" stroke="#1a1d21" stroke-width="1"/>
+  <rect x="831" y="311" width="108" height="8" fill="#dbeafe"/>
+  <rect x="831" y="321" width="108" height="8" fill="#dbeafe"/>
+  <rect x="831" y="331" width="108" height="8" fill="#dbeafe"/>
+
+  <!-- caption strip -->
+  <rect x="40" y="575" width="920" height="58" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2"/>
+  <rect x="64" y="596" width="5" height="16" fill="#2563eb"/>
+  <text x="500" y="610" text-anchor="middle" font-size="15">Cells touch only through named piping — never through each other's interiors.</text>
+</svg>

@@ -110,9 +110,30 @@
     padding: 12px; font-size: 12px; overflow: auto; max-height: 380px;
   }
   .port-notes { font-size: 13px; color: var(--dim); margin-top: 12px; }
+  .diagram {
+    border: 1px solid var(--line); border-radius: 6px;
+    padding: 10px 12px; margin: 0 0 12px; overflow-x: auto; background: #fff;
+  }
+  .diagram-label {
+    font-size: 11.5px; color: var(--dim); margin: 0 0 8px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .diagram svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+  .diagram-note {
+    font-family: var(--mono); font-size: 13px; color: var(--bad);
+    white-space: pre-wrap; word-break: break-word; padding: 4px 0;
+  }
+  .pictures { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 28px; }
+  .pictures figure { margin: 0; }
+  .pictures img {
+    width: 100%; height: auto; display: block;
+    border: 1px solid var(--line); border-radius: 6px; background: var(--panel);
+  }
+  .pictures figcaption { font-size: 13.5px; color: var(--dim); margin-top: 6px; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
   @media (max-width: 720px) {
     .grid { grid-template-columns: 1fr; }
+    .pictures { grid-template-columns: 1fr; }
     .trace-head, .trace-row { grid-template-columns: minmax(110px, 1fr) 52px 70px 1.4fr; font-size: 11.5px; }
   }
   footer.site {
@@ -167,6 +188,12 @@
   </div>
   <textarea id="editor" spellcheck="false" aria-label="Sheet JSON"></textarea>
   <p class="verdict dim" id="verdict"></p>
+  <div class="diagram">
+    <p class="diagram-label">Diagram — the sheet in the pane, drawn live</p>
+    <div id="diagram-host">
+      <div class="trace-empty">No diagram yet. Choose a fixture.</div>
+    </div>
+  </div>
   <div class="trace" id="trace">
     <div class="trace-empty">No run yet. Choose a fixture and press “Run sheet”.</div>
   </div>
@@ -183,6 +210,50 @@
     <code>1.0</code> (an integral float) or an integer beyond 2<sup>53</sup>
     canonicalises differently than under CPython.
   </p>
+</div>
+
+<h2>The pictures</h2>
+<p>
+  Four plates, drawn from the shipped artefacts, for readers who think
+  in pictures. The live diagram in the tool above is drawn from
+  whatever sheet is in the pane; these are the fixed maps of the
+  territory around it.
+</p>
+<div class="pictures">
+  <figure>
+    <img src="diagrams/anatomy.svg" alt="Anatomy of a lane sheet: lanes, cells, piping, and a sheet cell's boundary" loading="lazy">
+    <figcaption>
+      <strong>Anatomy of a sheet.</strong> Lanes, cells, and piping —
+      and a sheet cell's boundary: what crosses it, and what stays
+      private inside the cell.
+    </figcaption>
+  </figure>
+  <figure>
+    <img src="diagrams/lifts.svg" alt="One sheet lifted three ways: LangGraph, LangChain, and a hosted run" loading="lazy">
+    <figcaption>
+      <strong>One sheet, three lifts.</strong> The same workflow as a
+      LangGraph graph (its shape), a LangChain runnable chain (its
+      schedule), and a hosted run against a real model — one trace
+      underneath all three.
+    </figcaption>
+  </figure>
+  <figure>
+    <img src="diagrams/fold.svg" alt="A sheet compiled to git.pp records and reconstructed by the fold" loading="lazy">
+    <figcaption>
+      <strong>Sheets as records.</strong> One git.pp record per cell,
+      parents as piping ancestry; the state is reconstructed by the
+      fold alone — arrival order shuffled, result identical.
+    </figcaption>
+  </figure>
+  <figure>
+    <img src="diagrams/downward.svg" alt="Lane-sheet constructs mapping downward onto the Quilt fabric opcodes and the QUF image" loading="lazy">
+    <figcaption>
+      <strong>Downward.</strong> Constructs mapping onto the fabric's
+      opcodes (BIND/LINK/EFFECT/VIEW/TICK), the QUF image that boots
+      in simulation, and the five named places where the run layer
+      diverges.
+    </figcaption>
+  </figure>
 </div>
 
 <h2>Three lifts and a host</h2>
@@ -317,6 +388,7 @@ python3 -m lanesheet.interpret fixtures/linear-chain.sheet.json
 
 <script type="module">
 import { runSheet } from "./js/interpret.js";
+import { sheetToSvg } from "./js/diagram.js";
 import * as common from "./js/common.js";
 import { canonicalJson } from "./js/runtime.js";
 import { CONFORMANCE } from "./js/conformance-manifest.js";
@@ -341,6 +413,35 @@ const traceBox = document.getElementById("trace");
 const rawWrap = document.getElementById("raw-wrap");
 const rawPre = document.getElementById("raw");
 const titleEl = document.getElementById("sheet-title");
+const diagramHost = document.getElementById("diagram-host");
+
+// Draw the sheet currently in the pane. The diagram is generated
+// from the pane's JSON (never from a cached drawing), and any
+// failure -- unparseable JSON, a validation refusal, a cycle --
+// replaces the drawing with the note, so a stale diagram can never
+// outlive the sheet it was drawn from.
+function renderDiagram(text) {
+  diagramHost.innerHTML = "";
+  const note = (msg) => {
+    const div = document.createElement("div");
+    div.className = "diagram-note";
+    div.textContent = msg;
+    diagramHost.appendChild(div);
+  };
+  let sheet;
+  try {
+    sheet = JSON.parse(text);
+  } catch (exc) {
+    note(`No diagram — the sheet JSON does not parse: ${exc.message}`);
+    return;
+  }
+  try {
+    common.validateSheet(sheet, common.mapResolver(library));
+    diagramHost.innerHTML = sheetToSvg(sheet);
+  } catch (exc) {
+    note(`No diagram — refused: ${exc.name ?? "Error"}: ${exc.message}`);
+  }
+}
 
 document.getElementById("conformance-line").innerHTML =
   "Browser port: <strong>" + CONFORMANCE.positivesPassed + "/" + CONFORMANCE.positives +
@@ -408,6 +509,7 @@ function selectFixture(name) {
   empty.textContent = "No run yet. Press “Run sheet”.";
   traceBox.appendChild(empty);
   rawWrap.hidden = true;
+  renderDiagram(editor.value);
 }
 
 picker.addEventListener("change", () => selectFixture(picker.value));
@@ -457,6 +559,7 @@ document.getElementById("run").addEventListener("click", () => {
   }
   const name = picker.value;
   const text = editor.value;
+  renderDiagram(text);
   let sheet;
   try {
     sheet = JSON.parse(text);

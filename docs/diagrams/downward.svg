@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 840" width="100%" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" fill="#1a1d21">
+  <title>Downward, so far</title>
+  <desc>The build chain: lane sheet down to opcode listing, QUF image bytes, and quilt fabric — with what crosses each step and what does not. The QUIL compiler is not built.</desc>
+  <defs>
+    <marker id="arr" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="10.5" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1000" height="840" fill="#ffffff"/>
+
+  <text x="40" y="52" font-size="26" font-weight="700">Downward, so far</text>
+
+  <!-- layer 1: lane sheet -->
+  <rect x="60" y="90" width="580" height="120" rx="10" fill="#ffffff" stroke="#1a1d21" stroke-width="1.6"/>
+  <text x="80" y="116" font-size="13.5"><tspan font-weight="700" fill="#2563eb">01</tspan><tspan fill="#94a3b8"> · </tspan><tspan font-weight="700">lane sheet</tspan></text>
+  <text x="80" y="152" font-size="12.5" fill="#64748b">sheet → opcodes → QUF bytes → fabric</text>
+  <rect x="400" y="126" width="206" height="70" rx="6" fill="#f8fafc" stroke="#1a1d21" stroke-width="1.1"/>
+  <line x1="404" y1="149" x2="602" y2="149" stroke="#cbd5e1" stroke-dasharray="4 4"/>
+  <line x1="404" y1="172" x2="602" y2="172" stroke="#cbd5e1" stroke-dasharray="4 4"/>
+  <g stroke="#94a3b8" stroke-width="1" fill="#ffffff">
+    <rect x="408" y="131" width="34" height="13" rx="2"/>
+    <rect x="448" y="131" width="34" height="13" rx="2"/>
+    <rect x="408" y="154" width="26" height="13" rx="2"/>
+    <rect x="438" y="154" width="26" height="13" rx="2"/>
+    <rect x="468" y="154" width="30" height="13" rx="2"/>
+    <rect x="408" y="177" width="38" height="13" rx="2"/>
+    <rect x="450" y="177" width="30" height="13" rx="2"/>
+  </g>
+
+  <!-- layer 2: opcode listing -->
+  <rect x="60" y="284" width="580" height="120" rx="10" fill="#ffffff" stroke="#1a1d21" stroke-width="1.6"/>
+  <text x="80" y="310" font-size="13.5"><tspan font-weight="700" fill="#2563eb">02</tspan><tspan fill="#94a3b8"> · </tspan><tspan font-weight="700">opcode listing</tspan></text>
+  <g stroke="#1a1d21" stroke-width="1.4" fill="#f8fafc">
+    <rect x="83" y="340" width="84" height="32" rx="6"/>
+    <rect x="173" y="340" width="84" height="32" rx="6"/>
+    <rect x="263" y="340" width="84" height="32" rx="6"/>
+    <rect x="353" y="340" width="84" height="32" rx="6"/>
+    <rect x="443" y="340" width="84" height="32" rx="6"/>
+    <rect x="533" y="340" width="84" height="32" rx="6"/>
+  </g>
+  <g text-anchor="middle" font-size="13.5" font-weight="700">
+    <text x="125" y="361">BIND</text>
+    <text x="215" y="361">LINK</text>
+    <text x="305" y="361">EFFECT</text>
+    <text x="395" y="361">VIEW</text>
+    <text x="485" y="361">TICK</text>
+    <text x="575" y="361">ACK-NAK</text>
+  </g>
+
+  <!-- layer 3: QUF image -->
+  <rect x="60" y="478" width="580" height="120" rx="10" fill="#ffffff" stroke="#1a1d21" stroke-width="1.6"/>
+  <text x="80" y="504" font-size="13.5"><tspan font-weight="700" fill="#2563eb">03</tspan><tspan fill="#94a3b8"> · </tspan><tspan font-weight="700">QUF image</tspan><tspan fill="#94a3b8"> — bytes</tspan></text>
+  <rect x="150" y="522" width="360" height="62" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2"/>
+  <text y="548" font-size="14" text-anchor="middle">
+    <tspan x="176" font-weight="700" fill="#2563eb">51</tspan><tspan x="205" font-weight="700" fill="#2563eb">55</tspan><tspan x="234" font-weight="700" fill="#2563eb">46</tspan><tspan x="263" font-weight="700" fill="#2563eb">01</tspan>
+    <tspan x="292">00</tspan><tspan x="321">00</tspan><tspan x="350">00</tspan><tspan x="379">0f</tspan><tspan x="408">00</tspan><tspan x="437">40</tspan><tspan x="466">00</tspan><tspan x="495">20</tspan>
+  </text>
+  <text y="574" font-size="14" text-anchor="middle">
+    <tspan x="176">b8</tspan><tspan x="205">0d</tspan><tspan x="234">4a</tspan><tspan x="263">9c</tspan><tspan x="292">12</tspan><tspan x="321">a6</tspan><tspan x="350">f0</tspan><tspan x="379">3d</tspan><tspan x="408">7e</tspan><tspan x="437">55</tspan><tspan x="466">41</tspan><tspan x="495">c0</tspan>
+  </text>
+
+  <!-- layer 4: quilt fabric -->
+  <rect x="60" y="672" width="580" height="120" rx="10" fill="#ffffff" stroke="#1a1d21" stroke-width="1.6"/>
+  <text x="80" y="698" font-size="13.5"><tspan font-weight="700" fill="#2563eb">04</tspan><tspan fill="#94a3b8"> · </tspan><tspan font-weight="700">quilt fabric</tspan></text>
+  <g stroke="#94a3b8" stroke-width="1">
+    <rect x="180" y="712" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="206" y="712" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="232" y="712" width="20" height="20" rx="3" fill="#dbeafe"/>
+    <rect x="258" y="712" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="284" y="712" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="310" y="712" width="20" height="20" rx="3" fill="#dbeafe"/>
+    <rect x="336" y="712" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="362" y="712" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="388" y="712" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="414" y="712" width="20" height="20" rx="3" fill="#2563eb"/>
+    <rect x="180" y="738" width="20" height="20" rx="3" fill="#dbeafe"/>
+    <rect x="206" y="738" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="232" y="738" width="20" height="20" rx="3" fill="#1a1d21"/>
+    <rect x="258" y="738" width="20" height="20" rx="3" fill="#dbeafe"/>
+    <rect x="284" y="738" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="310" y="738" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="336" y="738" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="362" y="738" width="20" height="20" rx="3" fill="#dbeafe"/>
+    <rect x="388" y="738" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="414" y="738" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="180" y="764" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="206" y="764" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="232" y="764" width="20" height="20" rx="3" fill="#dbeafe"/>
+    <rect x="258" y="764" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="284" y="764" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="310" y="764" width="20" height="20" rx="3" fill="#dbeafe"/>
+    <rect x="336" y="764" width="20" height="20" rx="3" fill="#2563eb"/>
+    <rect x="362" y="764" width="20" height="20" rx="3" fill="#ffffff"/>
+    <rect x="388" y="764" width="20" height="20" rx="3" fill="#dbeafe"/>
+    <rect x="414" y="764" width="20" height="20" rx="3" fill="#ffffff"/>
+  </g>
+
+  <!-- amber tag on the bottom layer's right edge -->
+  <rect x="640" y="717" width="200" height="30" rx="4" fill="#fef3c7" stroke="#b45309" stroke-width="1.3"/>
+  <text x="740" y="736" text-anchor="middle" font-size="12.5" font-weight="700" fill="#b45309">QUIL compiler: not built</text>
+
+  <!-- downward steps -->
+  <g stroke="#2563eb" stroke-width="2.4" fill="none">
+    <path d="M350,216 V278" marker-end="url(#arr)"/>
+    <path d="M350,410 V472" marker-end="url(#arr)"/>
+    <path d="M350,604 V666" marker-end="url(#arr)"/>
+  </g>
+
+  <!-- side labels: what crosses, what does not -->
+  <line x1="362" y1="247" x2="653" y2="247" stroke="#cbd5e1" stroke-width="1.2" stroke-dasharray="4 5"/>
+  <path d="M665,239 l4,4 l7,-8" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="684" y="245" font-size="13">clean numeric subset crosses;</text>
+  <path d="M665,257 l7,7 m0,-7 l-7,7" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round"/>
+  <text x="684" y="264" font-size="13">text payloads refused by name</text>
+
+  <line x1="362" y1="441" x2="653" y2="441" stroke="#cbd5e1" stroke-width="1.2" stroke-dasharray="4 5"/>
+  <path d="M667,431 v10" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="667" cy="446" r="1.7" fill="#b45309"/>
+  <text x="684" y="439" font-size="13">boots in simulation (Icarus)</text>
+  <text x="684" y="458" font-size="13">— no silicon claim</text>
+
+  <line x1="362" y1="635" x2="653" y2="635" stroke="#cbd5e1" stroke-width="1.2" stroke-dasharray="4 5"/>
+  <path d="M665,622 l4,4 l7,-8" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="684" y="628" font-size="13">bind layer agrees byte-exact;</text>
+  <path d="M667,640 v10" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="667" cy="655" r="1.7" fill="#b45309"/>
+  <text x="684" y="647" font-size="13">run layer diverges in five named</text>
+  <text x="684" y="666" font-size="13">places (BEHAVIOUR.md)</text>
+</svg>

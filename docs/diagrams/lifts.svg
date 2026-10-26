@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 580" width="100%" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" fill="#1a1d21">
+  <title>One sheet, many runs</title>
+  <desc>One lane sheet lifts to five run targets; every run converges on a single byte-identical canonical trace. Live host runs are labelled, never mixed with the deterministic record.</desc>
+  <defs>
+    <marker id="arr" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" refX="9.5" refY="5.5" orient="auto">
+      <path d="M0,0 L11,5.5 L0,11 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="arra" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" refX="9.5" refY="5.5" orient="auto">
+      <path d="M0,0 L11,5.5 L0,11 Z" fill="#b45309"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1000" height="580" fill="#ffffff"/>
+
+  <text x="40" y="52" font-size="26" font-weight="700">One sheet, many runs</text>
+  <text x="40" y="76" font-size="13" fill="#94a3b8">five run targets · one deterministic record</text>
+
+  <!-- the sheet -->
+  <rect x="50" y="238" width="160" height="160" rx="10" fill="#ffffff" stroke="#1a1d21" stroke-width="1.6"/>
+  <rect x="75" y="262" width="110" height="58" rx="4" fill="#f8fafc" stroke="#1a1d21" stroke-width="1"/>
+  <rect x="80" y="267" width="100" height="12" fill="#dbeafe"/>
+  <rect x="80" y="283" width="100" height="12" fill="#dbeafe"/>
+  <rect x="80" y="299" width="100" height="12" fill="#dbeafe"/>
+  <text x="130" y="346" text-anchor="middle" font-size="16" font-weight="700">lane sheet</text>
+  <text x="130" y="368" text-anchor="middle" font-size="12.5" fill="#94a3b8">one definition</text>
+
+  <!-- fan-out to run targets -->
+  <g stroke="#2563eb" stroke-width="1.8" fill="none">
+    <path d="M210,318 C300,318 376,130 462,130" marker-end="url(#arr)"/>
+    <path d="M210,318 C300,318 376,222 462,222" marker-end="url(#arr)"/>
+    <path d="M210,318 C300,318 380,314 462,314" marker-end="url(#arr)"/>
+    <path d="M210,318 C300,318 376,498 462,498" marker-end="url(#arr)"/>
+  </g>
+  <path d="M210,318 C300,318 376,406 462,406" fill="none" stroke="#b45309" stroke-width="2" stroke-dasharray="8 6" marker-end="url(#arra)"/>
+  <circle cx="210" cy="318" r="4" fill="#2563eb"/>
+
+  <!-- host caveat, on the dashed lift -->
+  <g font-size="13" fill="#b45309" style="paint-order:stroke" stroke="#ffffff" stroke-width="4" stroke-linejoin="round">
+    <text x="300" y="350">live runs are labelled,</text>
+    <text x="300" y="366">never mixed with the deterministic record</text>
+  </g>
+
+  <!-- run targets -->
+  <g stroke="#1a1d21" stroke-width="1.5" fill="#ffffff">
+    <rect x="470" y="98" width="270" height="64" rx="8"/>
+    <rect x="470" y="190" width="270" height="64" rx="8"/>
+    <rect x="470" y="282" width="270" height="64" rx="8"/>
+    <rect x="470" y="374" width="270" height="64" rx="8"/>
+    <rect x="470" y="466" width="270" height="64" rx="8"/>
+  </g>
+  <g text-anchor="middle" font-size="16" font-weight="700">
+    <text x="605" y="136">Reference interpreter</text>
+    <text x="605" y="228">LangGraph module</text>
+    <text x="605" y="320">LangChain (LCEL) module</text>
+    <text x="605" y="412">Host (live model)</text>
+    <text x="605" y="504">Browser (JS port)</text>
+  </g>
+
+  <!-- convergence on the canonical trace -->
+  <g stroke="#2563eb" stroke-width="1.8" fill="none">
+    <path d="M740,130 C800,130 820,296 842,296" marker-end="url(#arr)"/>
+    <path d="M740,222 C800,222 820,307 842,307" marker-end="url(#arr)"/>
+    <path d="M740,314 C790,314 815,318 842,318" marker-end="url(#arr)"/>
+    <path d="M740,498 C800,498 820,340 842,340" marker-end="url(#arr)"/>
+  </g>
+  <path d="M740,406 C800,406 820,329 842,329" fill="none" stroke="#b45309" stroke-width="2" stroke-dasharray="8 6" marker-end="url(#arra)"/>
+
+  <path d="M850,272 H922 L938,288 V356 Q938,364 930,364 H858 Q850,364 850,356 Z" fill="#ffffff" stroke="#1a1d21" stroke-width="1.6"/>
+  <path d="M922,272 V288 H938" fill="none" stroke="#1a1d21" stroke-width="1.2"/>
+  <line x1="862" y1="300" x2="924" y2="300" stroke="#cbd5e1" stroke-width="2.5"/>
+  <line x1="862" y1="314" x2="924" y2="314" stroke="#cbd5e1" stroke-width="2.5"/>
+  <line x1="862" y1="328" x2="908" y2="328" stroke="#2563eb" stroke-width="2.5"/>
+  <line x1="862" y1="342" x2="924" y2="342" stroke="#cbd5e1" stroke-width="2.5"/>
+  <text x="894" y="390" text-anchor="middle" font-size="15" font-weight="700">canonical trace</text>
+  <text x="894" y="410" text-anchor="middle" font-size="12.5" fill="#94a3b8">one record</text>
+
+  <!-- check badge on the convergence -->
+  <circle cx="806" cy="318" r="16" fill="#2563eb"/>
+  <path d="M798,318 l6,6 l13,-13" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="806" y="354" text-anchor="middle" font-size="13" font-weight="700" fill="#2563eb" style="paint-order:stroke" stroke="#ffffff" stroke-width="4" stroke-linejoin="round">byte-identical</text>
+</svg>

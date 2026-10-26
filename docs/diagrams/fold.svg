@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 640" width="100%" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" fill="#1a1d21">
+  <title>State is derived, not stored</title>
+  <desc>Two racing record lineages meet in the fold. Only labelled key conflicts are resolved; winners form the state, losers are preserved and named.</desc>
+  <defs>
+    <marker id="arr" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" refX="9.5" refY="5.5" orient="auto">
+      <path d="M0,0 L11,5.5 L0,11 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrg" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="8.5" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1000" height="640" fill="#ffffff"/>
+
+  <text x="40" y="52" font-size="26" font-weight="700">State is derived, not stored</text>
+
+  <!-- record DAG: two lineages racing -->
+  <g stroke="#94a3b8" stroke-width="1.4" fill="none">
+    <path d="M170,158 L104,192" marker-end="url(#arrg)"/>
+    <path d="M186,158 L252,192" marker-end="url(#arrg)"/>
+    <path d="M98,254 L98,284" marker-end="url(#arrg)"/>
+    <path d="M258,254 L258,284" marker-end="url(#arrg)"/>
+  </g>
+  <text x="178" y="276" text-anchor="middle" font-size="12.5" fill="#94a3b8">two lineages race</text>
+
+  <g stroke="#1a1d21" stroke-width="1.4" fill="#ffffff">
+    <rect x="126" y="100" width="104" height="56" rx="8"/>
+    <rect x="46" y="196" width="104" height="56" rx="8"/>
+    <rect x="206" y="196" width="104" height="56" rx="8"/>
+    <rect x="46" y="288" width="104" height="56" rx="8"/>
+    <rect x="206" y="288" width="104" height="56" rx="8"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="178" y="124" font-size="13.5" font-weight="700">seed-0</text>
+    <text x="178" y="143" font-size="12" fill="#64748b">origin</text>
+    <text x="98" y="220" font-size="13.5" font-weight="700">task-a</text>
+    <text x="98" y="239" font-size="12" fill="#64748b">owner=lane</text>
+    <text x="258" y="220" font-size="13.5" font-weight="700">task-b</text>
+    <text x="258" y="239" font-size="12" fill="#64748b">checked=true</text>
+    <text x="98" y="312" font-size="13.5" font-weight="700">override-1</text>
+    <text x="98" y="331" font-size="12" fill="#64748b">tone=terse</text>
+    <text x="258" y="312" font-size="13.5" font-weight="700">override-2</text>
+    <text x="258" y="331" font-size="12" fill="#64748b">tone=verbose</text>
+  </g>
+
+  <!-- records pour into the fold -->
+  <g stroke="#2563eb" stroke-width="1.8" fill="none">
+    <path d="M150,316 C230,316 308,266 387,266" marker-end="url(#arr)"/>
+    <path d="M310,316 C382,316 452,266 525,266" marker-end="url(#arr)"/>
+  </g>
+
+  <text x="460" y="224" text-anchor="middle" font-size="16" font-weight="700">the fold</text>
+  <text x="460" y="244" text-anchor="middle" font-size="12.5" fill="#64748b">— labelled key conflicts only —</text>
+
+  <polygon points="350,262 570,262 482,374 482,406 438,406 438,374" fill="#f8fafc"/>
+  <path d="M350,262 L438,374 L438,406" fill="none" stroke="#1a1d21" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M570,262 L482,374 L482,406" fill="none" stroke="#1a1d21" stroke-width="1.6" stroke-linejoin="round"/>
+
+  <!-- winners and losers both leave the spout -->
+  <path d="M460,408 C520,408 545,268 612,268" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#arr)"/>
+  <path d="M460,408 C515,434 560,438 612,438" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="5 5" marker-end="url(#arrg)"/>
+
+  <!-- state panel: winners -->
+  <rect x="620" y="190" width="330" height="140" rx="10" fill="#ffffff" stroke="#1a1d21" stroke-width="1.6"/>
+  <text x="648" y="213" font-size="14" font-weight="700">state (derived)</text>
+  <line x1="632" y1="226" x2="938" y2="226" stroke="#e2e8f0"/>
+  <text x="648" y="254" font-size="14" font-weight="700">owner</text>
+  <text x="766" y="254" font-size="14">= lane</text>
+  <rect x="856" y="240" width="80" height="21" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="1"/>
+  <text x="896" y="254" text-anchor="middle" font-size="12" fill="#2563eb">task-a</text>
+  <text x="648" y="286" font-size="14" font-weight="700">checked</text>
+  <text x="766" y="286" font-size="14">= true</text>
+  <rect x="856" y="272" width="80" height="21" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="1"/>
+  <text x="896" y="286" text-anchor="middle" font-size="12" fill="#2563eb">task-b</text>
+  <text x="648" y="318" font-size="14" font-weight="700">tone</text>
+  <text x="766" y="318" font-size="14">= terse</text>
+  <rect x="856" y="304" width="80" height="21" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="1"/>
+  <text x="896" y="318" text-anchor="middle" font-size="12" fill="#2563eb">override-1</text>
+
+  <!-- losers sub-panel -->
+  <rect x="620" y="372" width="330" height="98" rx="10" fill="#fafafa" stroke="#cbd5e1" stroke-width="1.4" stroke-dasharray="6 5"/>
+  <text x="648" y="398" font-size="12.5" fill="#64748b">losers are preserved and named</text>
+  <text x="648" y="432" font-size="13.5" fill="#64748b">tone = verbose</text>
+  <rect x="856" y="418" width="80" height="21" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="896" y="432" text-anchor="middle" font-size="12" fill="#64748b">override-2</text>
+
+  <!-- caption strip -->
+  <rect x="40" y="520" width="920" height="58" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2"/>
+  <rect x="64" y="542" width="5" height="16" fill="#2563eb"/>
+  <text x="500" y="566" text-anchor="middle" font-size="15">Arrival order is never an input. Digests authenticate content, not authorship.</text>
+</svg>
