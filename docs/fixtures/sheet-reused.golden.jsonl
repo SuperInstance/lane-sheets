@@ -1,0 +1,11 @@
+{"cell":"input.a","inputs":{},"inputs_hash":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","kind":"value","output":"the active ledger"}
+{"cell":"input.b","inputs":{},"inputs_hash":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","kind":"value","output":"only the piping is public"}
+{"cell":"use.first","inputs":{"text":"the active ledger"},"inputs_hash":"245110b4d5749f453078699ae6b38a7ff80f7457b59d55f0d45f7fe848ba29e2","kind":"sheet","output":"counted: {\"chars\":17,\"words\":3}"}
+{"cell":"use.first/input.text","inputs":{},"inputs_hash":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","kind":"value","output":"the active ledger"}
+{"cell":"use.first/work.count","inputs":{"text":"the active ledger"},"inputs_hash":"245110b4d5749f453078699ae6b38a7ff80f7457b59d55f0d45f7fe848ba29e2","kind":"tool","output":{"chars":17,"words":3}}
+{"cell":"use.first/output.report","inputs":{"count":{"chars":17,"words":3}},"inputs_hash":"f838a63b1ee34db2ad2c4baf5532de865f17aadbe989377e4a3b1cac9e1b6ceb","kind":"prompt","output":"counted: {\"chars\":17,\"words\":3}"}
+{"cell":"use.second","inputs":{"text":"only the piping is public"},"inputs_hash":"94d80179ed7ca2c6b71d8ae97a454b5b57d561356010aee049be47d6bf65fd79","kind":"sheet","output":"counted: {\"chars\":25,\"words\":5}"}
+{"cell":"use.second/input.text","inputs":{},"inputs_hash":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","kind":"value","output":"only the piping is public"}
+{"cell":"use.second/work.count","inputs":{"text":"only the piping is public"},"inputs_hash":"94d80179ed7ca2c6b71d8ae97a454b5b57d561356010aee049be47d6bf65fd79","kind":"tool","output":{"chars":25,"words":5}}
+{"cell":"use.second/output.report","inputs":{"count":{"chars":25,"words":5}},"inputs_hash":"2064deabc698fee574feabc6eeb06fe795d70bdc0f5583a23b247d20fe57f218","kind":"prompt","output":"counted: {\"chars\":25,\"words\":5}"}
+{"cell":"join.summary","inputs":{"first":"counted: {\"chars\":17,\"words\":3}","second":"counted: {\"chars\":25,\"words\":5}"},"inputs_hash":"d1dc7b3a60cd12d74278c6e466aa30a2ee2bbd3b3b1468364656190083c7d559","kind":"prompt","output":"A: counted: {\"chars\":17,\"words\":3} | B: counted: {\"chars\":25,\"words\":5}"}

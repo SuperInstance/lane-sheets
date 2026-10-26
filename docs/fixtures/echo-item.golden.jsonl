@@ -1,0 +1,2 @@
+{"cell":"input.item","inputs":{},"inputs_hash":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","kind":"value","output":0}
+{"cell":"output.echo","inputs":{"item":0},"inputs_hash":"423c8d25ca75d8fb26c653bf1624bdfbe3ee55c4ef386f2c6a89253c865ca94e","kind":"prompt","output":"item 0"}

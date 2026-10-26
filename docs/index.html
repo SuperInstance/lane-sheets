@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lane Sheets — SuperInstance</title>
+<meta name="description" content="Agent workflows as sheet data, one abstraction below LangGraph and LangChain. A working in-browser interpreter, byte-identical to the Python reference on the full conformance corpus.">
+<style>
+  :root {
+    --ink: #1a1d21;
+    --dim: #5a6169;
+    --line: #d9dde2;
+    --accent: #0b5fa5;
+    --accent-ink: #ffffff;
+    --ok: #157347;
+    --bad: #b02a30;
+    --panel: #f6f7f9;
+    --code-bg: #101418;
+    --code-ink: #d7dee6;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; color: var(--ink); background: #ffffff;
+    font-family: var(--sans); line-height: 1.55; font-size: 16px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px 64px; }
+  header.site {
+    border-bottom: 2px solid var(--ink);
+    padding: 28px 0 18px; margin-bottom: 8px;
+  }
+  header.site h1 { font-size: 30px; margin: 0 0 4px; letter-spacing: -0.5px; }
+  header.site h1 .brand { color: var(--accent); }
+  header.site p.lede { margin: 6px 0 12px; font-size: 17px; max-width: 46em; }
+  nav.links { font-size: 14px; }
+  nav.links a { color: var(--accent); text-decoration: none; margin-right: 16px; white-space: nowrap; }
+  nav.links a:hover { text-decoration: underline; }
+  h2 { font-size: 21px; margin: 40px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 22px 0 6px; }
+  p { max-width: 48em; }
+  a { color: var(--accent); }
+  code { font-family: var(--mono); font-size: 0.92em; background: var(--panel); padding: 0 4px; border-radius: 3px; }
+  pre.cmd {
+    background: var(--code-bg); color: var(--code-ink);
+    font-family: var(--mono); font-size: 13.5px; line-height: 1.5;
+    padding: 14px 16px; border-radius: 6px; overflow-x: auto; max-width: 100%;
+  }
+  pre.cmd .c { color: #7d8ea3; }
+
+  /* ---- the tool ---- */
+  .tool {
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 16px; background: #fff; margin-top: 14px;
+  }
+  .conformance {
+    font-family: var(--mono); font-size: 13px; color: var(--dim);
+    margin: 0 0 12px;
+  }
+  .conformance strong { color: var(--ok); font-weight: 600; }
+  .tool-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .tool-controls label { font-size: 14px; color: var(--dim); }
+  select, button {
+    font-family: var(--sans); font-size: 14.5px; padding: 7px 10px;
+    border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--ink);
+  }
+  button.run {
+    background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
+    font-weight: 600; cursor: pointer; padding: 7px 22px;
+  }
+  button.run:hover { filter: brightness(1.1); }
+  .sheet-title { font-size: 14px; color: var(--dim); font-style: italic; }
+  textarea#editor {
+    width: 100%; min-height: 210px; resize: vertical;
+    font-family: var(--mono); font-size: 13px; line-height: 1.5;
+    border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px;
+    background: var(--panel); color: var(--ink);
+  }
+  .verdict { font-family: var(--mono); font-size: 13.5px; min-height: 1.5em; margin: 10px 0 6px; }
+  .verdict.ok { color: var(--ok); }
+  .verdict.bad { color: var(--bad); }
+  .verdict.dim { color: var(--dim); }
+  .trace {
+    border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+  }
+  .trace-head, .trace-row {
+    display: grid; grid-template-columns: minmax(150px, 1.3fr) 64px 92px 2fr;
+    gap: 10px; padding: 6px 12px; font-family: var(--mono); font-size: 12.5px;
+    align-items: baseline;
+  }
+  .trace-head {
+    background: var(--panel); color: var(--dim); font-size: 11.5px;
+    text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--line);
+  }
+  .trace-row { border-bottom: 1px solid #eef0f3; }
+  .trace-row:last-child { border-bottom: none; }
+  .trace-row .cell { font-weight: 600; word-break: break-all; }
+  .trace-row .kind { color: var(--accent); }
+  .trace-row .hash { color: var(--dim); }
+  .trace-row .out { word-break: break-word; white-space: pre-wrap; }
+  .trace-empty { padding: 14px 12px; font-family: var(--mono); font-size: 13px; color: var(--dim); }
+  .refusal {
+    padding: 12px; font-family: var(--mono); font-size: 13px;
+    color: var(--bad); background: #fdf1f1; white-space: pre-wrap; word-break: break-word;
+  }
+  details.raw { margin-top: 10px; }
+  details.raw summary { font-size: 13.5px; color: var(--dim); cursor: pointer; }
+  details.raw pre {
+    background: var(--code-bg); color: var(--code-ink); border-radius: 6px;
+    padding: 12px; font-size: 12px; overflow: auto; max-height: 380px;
+  }
+  .port-notes { font-size: 13px; color: var(--dim); margin-top: 12px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+  @media (max-width: 720px) {
+    .grid { grid-template-columns: 1fr; }
+    .trace-head, .trace-row { grid-template-columns: minmax(110px, 1fr) 52px 70px 1.4fr; font-size: 11.5px; }
+  }
+  footer.site {
+    margin-top: 56px; border-top: 1px solid var(--line); padding-top: 14px;
+    font-size: 13.5px; color: var(--dim);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="site">
+  <h1>Lane Sheets <span class="brand">— SuperInstance</span></h1>
+  <p class="lede">
+    An agent workflow written as one JSON sheet — lanes of cells connected by
+    piping only — so the same workflow can be read as a spreadsheet, run by a
+    reference interpreter, lifted to LangGraph or LangChain code, or hosted
+    against a real model. The sheet is the layer one step below the
+    frameworks, the way a hardware description sits below the languages
+    compiled from it. Run state is derived from the sheet, never stored in
+    it; cells touch only through named piping, never through each other's
+    interiors — and a cell can itself contain a whole sheet, opaque from the
+    rung above it.
+  </p>
+  <nav class="links">
+    <a href="https://github.com/SuperInstance/lane-sheets">GitHub repo</a>
+    <a href="https://github.com/SuperInstance/lane-sheets/blob/main/SPEC.md">SPEC</a>
+    <a href="https://github.com/SuperInstance/lane-sheets/blob/main/SPEC-AMENDMENT.md">Amendment: sheet cells</a>
+    <a href="https://github.com/SuperInstance/lane-sheets/blob/main/SPEC-AMENDMENT-0.3.md">Amendment: each</a>
+    <a href="https://github.com/SuperInstance/lane-sheets/blob/main/HOST.md">Host</a>
+    <a href="https://github.com/SuperInstance/lane-sheets/tree/main/downward">Downward leg</a>
+  </nav>
+</header>
+
+<h2>Run a sheet, right here</h2>
+<p>
+  This is the interpreter, ported to JavaScript and running in your browser —
+  not a recording. Pick a fixture, edit it if you like, and run it. The trace
+  below is the canonical trace, the same object the Python reference
+  interpreter produces; for an unmodified fixture the page diffs the result
+  against the Python golden live. In-browser runs use the deterministic stub
+  providers, exactly as conformance does — the two tiers never mix.
+</p>
+
+<div class="tool">
+  <p class="conformance" id="conformance-line">Browser port conformance: …</p>
+  <div class="tool-controls">
+    <label for="picker">Fixture</label>
+    <select id="picker"></select>
+    <button class="run" id="run" type="button">Run sheet</button>
+    <span class="sheet-title" id="sheet-title"></span>
+  </div>
+  <textarea id="editor" spellcheck="false" aria-label="Sheet JSON"></textarea>
+  <p class="verdict dim" id="verdict"></p>
+  <div class="trace" id="trace">
+    <div class="trace-empty">No run yet. Choose a fixture and press “Run sheet”.</div>
+  </div>
+  <details class="raw" id="raw-wrap" hidden>
+    <summary>Raw canonical trace (JSONL)</summary>
+    <pre id="raw"></pre>
+  </details>
+  <p class="port-notes">
+    Sheet-cell references resolve against the shipped fixture library, the
+    same fixture-local rule the Python runner uses. Refusals are named, never
+    silent: break a sheet and the pane shows the refusal the reference
+    interpreter would raise. One known port edge, outside the fixture
+    corpus: numbers are rendered with JS formatting, so a sheet literal like
+    <code>1.0</code> (an integral float) or an integer beyond 2<sup>53</sup>
+    canonicalises differently than under CPython.
+  </p>
+</div>
+
+<h2>Three lifts and a host</h2>
+<div class="grid">
+  <div>
+    <h3>LangGraph</h3>
+    <p>
+      <code>lanesheet/lift_langgraph.py</code> raises a sheet to a standalone
+      LangGraph module. On the full conformance corpus the lifted module's
+      trace is byte-identical to the interpreter's:
+      <strong>27/27</strong> (19 positive traces + 8 named refusals).
+      The LangGraph module shows the sheet's <em>shape</em> — the piping
+      topology as a graph.
+    </p>
+    <h3>LangChain (LCEL)</h3>
+    <p>
+      <code>lanesheet/lift_langchain.py</code> targets LangChain's runnable
+      core — <code>langchain-core</code> only, never the full package — and
+      also lands <strong>27/27 byte-identical</strong>. Branching is carried
+      by <code>RunnableBranch</code> (its laziness betrays nothing: the arms
+      are upstream cells, already computed) and <code>each</code> by
+      <code>RunnableEach</code>. The LangChain module shows the sheet's
+      <em>schedule</em> rather than its shape — same execution, different
+      auditability. The per-construct mapping is in
+      <a href="https://github.com/SuperInstance/lane-sheets/blob/main/LANGCHAIN.md">LANGCHAIN.md</a>.
+    </p>
+  </div>
+  <div>
+    <h3>The host: real models, honestly labelled</h3>
+    <p>
+      The Python host binds the <code>llm</code>/<code>tool</code> names in a
+      sheet to real providers — MiniMax first. A live run emits the same
+      canonical trace behind a header record that names the run live and the
+      providers behind it; <code>run_host_check.py</code> validates a live
+      trace structurally (hashes recompute, order, value flow) — never
+      byte-equality, because live output is nondeterministic. A stub trace
+      dressed as live fails the checker; a tampered hash fails by name.
+      Captured live traces, including one whose <code>llm</code> cell sits a
+      rung down inside a sub-sheet, are in the repo's
+      <a href="https://github.com/SuperInstance/lane-sheets/tree/main/examples">examples/</a>;
+      the binding layer and the two-tier law are in
+      <a href="https://github.com/SuperInstance/lane-sheets/blob/main/HOST.md">HOST.md</a>.
+    </p>
+    <h3>Refusals are named and total</h3>
+    <p>
+      A sheet that cannot run exactly is refused with a specific error —
+      <code>CycleDetected</code>, <code>RecursiveSheetRef</code>,
+      <code>BindTargetNotValue</code>, <code>EachTooManyElements</code>, … —
+      in the interpreter, both lifters, the host, and the browser port above.
+      Nothing is silently approximated.
+    </p>
+  </div>
+</div>
+
+<h2>The downward record</h2>
+<p>
+  Downward, workflow constructs map onto the Quilt fabric's opcodes
+  (BIND/LINK/EFFECT/VIEW/TICK, with ACK/NAK argued as the +1): of ten
+  constructs, two map cleanly, six with named losses, two not at all yet
+  (<a href="https://github.com/SuperInstance/lane-sheets/blob/main/downward/DOWNWARD.md">DOWNWARD.md</a>).
+  For the clean subset there is a real QUF writer and reader — container
+  bytes per the QUF spec, round-trip reconstruction, agreement by the
+  fabric's canonical hash, <strong>45/45 checks</strong> including the spec's
+  own published golden vector. The fabric itself has consumed one of these
+  images: the quilt-verilog RTL loader booted from it in Icarus Verilog
+  simulation (RUN reached, readbacks byte-exact) — simulation, not silicon
+  (<a href="https://github.com/SuperInstance/lane-sheets/blob/main/downward/FALSIFIER.md">FALSIFIER.md</a>).
+  Two honest findings came out of that work: the QUF spec's crc32 digest
+  scope is underdetermined — the Python tooling digests all sections, the
+  RTL loader only its four payload sections — filed as
+  <a href="https://github.com/SuperInstance/lane-sheets/blob/main/downward/QUF-NOTES.md">QUF-NOTES D9</a>
+  with a <code>--no-crc32</code> writer flag rather than a unilateral
+  ruling; and driving the booted fabric through the mapped op sequence
+  shows its state <em>agrees at the bind layer</em> (dials byte-exact, hash
+  identical) and <em>diverges at the run layer in five named places</em> —
+  an unpaired inject silently dropped, a directed edge costing two LINKs, a
+  THRESH=0 sink oscillating and training its own upstream synapse, metabolic
+  decay erasing an activation in one tick, and numeric regimes that never
+  meet
+  (<a href="https://github.com/SuperInstance/lane-sheets/blob/main/downward/BEHAVIOUR.md">BEHAVIOUR.md</a>).
+  What a real QUIL compiler must compensate for is listed there, from
+  measurements.
+</p>
+
+<h2>Sheets as git.pp records</h2>
+<p>
+  A lane sheet also compiles to <a href="https://github.com/patchwork-quilt">git.pp</a>
+  records — one record per cell, parents as piping ancestry — and
+  reconstructs <em>by the fold alone</em>: arrival order shuffled, state
+  identical, interpreter trace byte-identical to the golden (11/11,
+  <a href="https://github.com/SuperInstance/lane-sheets/blob/main/gitpp/GITPP-SPIKE.md">GITPP-SPIKE.md</a>).
+  Conflict behaviour is executed, not argued: an override record wins a
+  cell's definition, a descendant redefinition dominates its ancestor, an
+  equal-class sibling loses and is named. The live proof: the public repo
+  <a href="https://github.com/patchwork-quilt/gitpp-dogfood-sheet">patchwork-quilt/gitpp-dogfood-sheet</a>
+  carries a nested, reused sheet as pure records, and the released
+  <code>gitpp-action</code> derived them in real GitHub CI
+  (<a href="https://github.com/patchwork-quilt/gitpp-dogfood-sheet/actions/runs/40361763003">run 40361763003</a>, success) —
+  its state agreeing with the independent local fold on all 20 keys, zero
+  divergences
+  (<a href="https://github.com/SuperInstance/lane-sheets/blob/main/gitpp/DOGFOOD.md">DOGFOOD.md</a>).
+  Installing a plugin sheet is landing its records; uninstall is honestly
+  not a fold operation yet.
+</p>
+
+<h2>Run the Python implementation</h2>
+<pre class="cmd">python3 -m venv .venv
+.venv/bin/pip install langgraph langchain-core
+
+.venv/bin/python run_conformance.py
+<span class="c"># SUMMARY: 27/27 PASS            (interpreter vs golden vs LangGraph)</span>
+<span class="c"># LANGCHAIN SUMMARY: 27/27 PASS  (the same corpus lifted to LangChain)</span>
+
+python3 -m lanesheet.interpret fixtures/linear-chain.sheet.json
+.venv/bin/python -m lanesheet.lift_langgraph fixtures/linear-chain.sheet.json /tmp/linear.py
+.venv/bin/python /tmp/linear.py        <span class="c"># prints the identical trace</span></pre>
+<p>
+  The trace is the conformance object: implementations agree by producing
+  identical traces, never by trusting each other. Full layout, honest
+  limits, and the shelf study this builds on are in the
+  <a href="https://github.com/SuperInstance/lane-sheets">repo README</a>.
+</p>
+
+<footer class="site">
+  SuperInstance · Lane Sheets 0.4 · format 0.3 ·
+  <a href="https://github.com/SuperInstance/lane-sheets">github.com/SuperInstance/lane-sheets</a> ·
+  The browser port on this page is proven against the Python goldens by
+  <code>check_conformance.mjs</code> in the repo's page tree.
+</footer>
+
+</div>
+
+<script type="module">
+import { runSheet } from "./js/interpret.js";
+import * as common from "./js/common.js";
+import { canonicalJson } from "./js/runtime.js";
+import { CONFORMANCE } from "./js/conformance-manifest.js";
+
+const POSITIVES = [
+  "batch-wrap", "branch-else", "branch-on-value", "define-plus",
+  "each-at-cap", "each-define", "each-empty", "each-in-sheet",
+  "each-of-sheets", "echo-item", "leaf-define", "linear-chain",
+  "mid-wrap", "sheet-nested", "sheet-once", "sheet-reused",
+  "tool-feeds-prompt", "two-lanes-join", "word-frame",
+];
+const NEGATIVES = [
+  "negative-cycle", "negative-each-conflict", "negative-each-nonlist",
+  "negative-each-overcap", "negative-each-unbound", "negative-each-version",
+  "negative-listener", "negative-recursive",
+];
+
+const picker = document.getElementById("picker");
+const editor = document.getElementById("editor");
+const verdict = document.getElementById("verdict");
+const traceBox = document.getElementById("trace");
+const rawWrap = document.getElementById("raw-wrap");
+const rawPre = document.getElementById("raw");
+const titleEl = document.getElementById("sheet-title");
+
+document.getElementById("conformance-line").innerHTML =
+  "Browser port: <strong>" + CONFORMANCE.positivesPassed + "/" + CONFORMANCE.positives +
+  " positive traces byte-identical</strong> to the Python goldens, <strong>" +
+  CONFORMANCE.negativesPassed + "/" + CONFORMANCE.negatives +
+  " refusals by name</strong> — generated by check_conformance.mjs under " +
+  CONFORMANCE.harness + ", " + CONFORMANCE.generatedAt + ", not hand-typed.";
+
+const posGroup = document.createElement("optgroup");
+posGroup.label = "Fixtures";
+for (const name of POSITIVES) {
+  const opt = document.createElement("option");
+  opt.value = name; opt.textContent = name;
+  posGroup.appendChild(opt);
+}
+const negGroup = document.createElement("optgroup");
+negGroup.label = "Refusal fixtures (expected to refuse)";
+for (const name of NEGATIVES) {
+  const opt = document.createElement("option");
+  opt.value = name; opt.textContent = name;
+  negGroup.appendChild(opt);
+}
+picker.appendChild(posGroup);
+picker.appendChild(negGroup);
+picker.value = "linear-chain";
+
+const library = {};        // name -> parsed sheet (the fixture library)
+const originalText = {};   // name -> exact file text, for the golden diff
+const goldens = {};        // name -> golden trace text (positives)
+const expected = {};       // name -> expected refusal (negatives)
+
+async function fetchText(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`fetch ${path}: ${res.status}`);
+  return res.text();
+}
+
+let libraryReady = false;
+async function loadLibrary() {
+  const names = [...POSITIVES, ...NEGATIVES];
+  await Promise.all(names.map(async (name) => {
+    const text = await fetchText(`fixtures/${name}.sheet.json`);
+    originalText[name] = text;
+    library[name] = JSON.parse(text);
+    if (POSITIVES.includes(name)) {
+      goldens[name] = await fetchText(`fixtures/${name}.golden.jsonl`);
+    } else {
+      expected[name] = JSON.parse(await fetchText(`fixtures/${name}.expected.json`));
+    }
+  }));
+  libraryReady = true;
+}
+
+function selectFixture(name) {
+  editor.value = originalText[name] ?? "";
+  const sheet = library[name];
+  titleEl.textContent = sheet && sheet.title ? sheet.title : "";
+  verdict.className = "verdict dim";
+  verdict.textContent = NEGATIVES.includes(name)
+    ? `Refusal fixture — expected: ${expected[name]?.error ?? "?"}${expected[name]?.phase === "runtime" ? " (at run time)" : ""}. Press Run.`
+    : "";
+  traceBox.innerHTML = "";
+  const empty = document.createElement("div");
+  empty.className = "trace-empty";
+  empty.textContent = "No run yet. Press “Run sheet”.";
+  traceBox.appendChild(empty);
+  rawWrap.hidden = true;
+}
+
+picker.addEventListener("change", () => selectFixture(picker.value));
+
+function renderTrace(lines) {
+  traceBox.innerHTML = "";
+  const head = document.createElement("div");
+  head.className = "trace-head";
+  for (const label of ["cell", "kind", "inputs #", "output"]) {
+    const span = document.createElement("span");
+    span.textContent = label;
+    head.appendChild(span);
+  }
+  traceBox.appendChild(head);
+  for (const line of lines) {
+    const rec = JSON.parse(line);
+    const row = document.createElement("div");
+    row.className = "trace-row";
+    const cell = document.createElement("span");
+    cell.className = "cell"; cell.textContent = rec.cell;
+    const kind = document.createElement("span");
+    kind.className = "kind"; kind.textContent = rec.kind;
+    const hash = document.createElement("span");
+    hash.className = "hash"; hash.textContent = rec.inputs_hash.slice(0, 8);
+    hash.title = rec.inputs_hash;
+    const out = document.createElement("span");
+    out.className = "out"; out.textContent = canonicalJson(rec.output);
+    row.append(cell, kind, hash, out);
+    traceBox.appendChild(row);
+  }
+}
+
+function renderRefusal(exc) {
+  traceBox.innerHTML = "";
+  const box = document.createElement("div");
+  box.className = "refusal";
+  box.textContent = `refused: ${exc.name}: ${exc.message}`;
+  traceBox.appendChild(box);
+  rawWrap.hidden = true;
+}
+
+document.getElementById("run").addEventListener("click", () => {
+  if (!libraryReady) {
+    verdict.className = "verdict dim";
+    verdict.textContent = "Fixture library still loading — try again in a moment.";
+    return;
+  }
+  const name = picker.value;
+  const text = editor.value;
+  let sheet;
+  try {
+    sheet = JSON.parse(text);
+  } catch (exc) {
+    verdict.className = "verdict bad";
+    verdict.textContent = `JSON parse error: ${exc.message}`;
+    traceBox.innerHTML = "";
+    rawWrap.hidden = true;
+    return;
+  }
+  const resolver = common.mapResolver(library);
+  let lines;
+  try {
+    lines = runSheet(sheet, resolver);
+  } catch (exc) {
+    renderRefusal(exc);
+    if (NEGATIVES.includes(name)) {
+      const want = expected[name]?.error;
+      if (exc.name === want) {
+        verdict.className = "verdict ok";
+        verdict.textContent = `✓ Refused with ${exc.name} — exactly the expected refusal.`;
+      } else {
+        verdict.className = "verdict bad";
+        verdict.textContent = `Refused with ${exc.name}, but this fixture expects ${want}.`;
+      }
+    } else {
+      verdict.className = "verdict bad";
+      verdict.textContent = `Refused: ${exc.name}. (The reference interpreter refuses this sheet too — refusals are part of the format.)`;
+    }
+    return;
+  }
+  renderTrace(lines);
+  rawPre.textContent = lines.join("\n") + "\n";
+  rawWrap.hidden = false;
+  const unmodified = text === originalText[name];
+  if (POSITIVES.includes(name) && unmodified) {
+    const traceText = lines.join("\n") + "\n";
+    if (traceText === goldens[name]) {
+      verdict.className = "verdict ok";
+      verdict.textContent = `✓ ${lines.length} trace lines — byte-identical to the Python golden for ${name}.`;
+    } else {
+      verdict.className = "verdict bad";
+      verdict.textContent = `✗ Trace differs from the Python golden for ${name}. (This should not happen — please file it.)`;
+    }
+  } else if (POSITIVES.includes(name)) {
+    verdict.className = "verdict dim";
+    verdict.textContent = `Ran ${lines.length} trace lines. Sheet edited — golden comparison off.`;
+  } else {
+    verdict.className = "verdict bad";
+    verdict.textContent = `This sheet ran, but the fixture expects refusal ${expected[name]?.error}.`;
+  }
+});
+
+loadLibrary()
+  .then(() => selectFixture(picker.value))
+  .catch((exc) => {
+    verdict.className = "verdict bad";
+    verdict.textContent = `Could not load the fixture library: ${exc.message}`;
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+{"id":"negative-listener","lanes":[{"cells":[{"id":"input.x","kind":"value","value":1},{"id":"goal.done","inputs":{"watch":"input.x"},"kind":"listener"}],"id":"main"}],"lanesheet":"0.1","outputs":["input.x"],"title":"NEGATIVE: a quilt 'listener' cell must be refused by name"}

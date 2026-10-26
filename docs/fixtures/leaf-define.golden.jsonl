@@ -1,0 +1,4 @@
+{"cell":"input.word","inputs":{},"inputs_hash":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","kind":"value","output":"unset"}
+{"cell":"reasoning.prompt","inputs":{"word":"unset"},"inputs_hash":"193e082161b73872ff0a52742ec8571ce173d9464dc0f7385fd9bc5ef3aae1a4","kind":"prompt","output":"Define unset in one line."}
+{"cell":"reasoning.answer","inputs":{"prompt":"Define unset in one line."},"inputs_hash":"46afcbb0e6c04e5bd1e11afe8c3b7fc08c295d3283075f8696320db3766a9178","kind":"llm","output":"[stub-llm:43a6da16] Define unset in one line. -> noted"}
+{"cell":"output.done","inputs":{"answer":"[stub-llm:43a6da16] Define unset in one line. -> noted"},"inputs_hash":"83de9b3364e72b5cf54d82c88f6ca838e23c4c1835a1152c975669c8b8173f64","kind":"prompt","output":"leaf: [stub-llm:43a6da16] Define unset in one line. -> noted"}

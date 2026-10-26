@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "private": true,
+  "description": "Dev harness for the docs/ browser port (Node ESM resolution). Not part of the shipped page."
+}

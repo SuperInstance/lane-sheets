@@ -1,0 +1,3 @@
+{"cell":"input.words","inputs":{},"inputs_hash":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","kind":"value","output":[]}
+{"cell":"fan.define","inputs":{"words":[]},"inputs_hash":"3ca6b0836d53afd5dbb6d97bfa41af528e1069f0cd659db2f9dea9deb01d49fc","kind":"sheet","output":[]}
+{"cell":"output.all","inputs":{"results":[]},"inputs_hash":"5021e624e752b001ce3e3846e8f158ed4aeb93a4c9a72fdb35a0c5b14a0eea84","kind":"prompt","output":"defined: []"}

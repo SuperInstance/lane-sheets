@@ -1,0 +1,4 @@
+{"cell":"input.topic","inputs":{},"inputs_hash":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","kind":"value","output":"the active ledger"}
+{"cell":"reasoning.prompt","inputs":{"topic":"the active ledger"},"inputs_hash":"90e7dcfcae24048e9e925d5dbecb394dc09389b285b42a66b6bb31fb3173b6e6","kind":"prompt","output":"Explain the active ledger in one sentence."}
+{"cell":"reasoning.answer","inputs":{"prompt":"Explain the active ledger in one sentence."},"inputs_hash":"b535d76ba35d7e6ae81f89f77f4d63e01780151d6ebd493bf72368eff3fd8e6c","kind":"llm","output":"[stub-llm:7f39acc0] Explain the active ledger in one sentence. -> noted"}
+{"cell":"output.framed","inputs":{"answer":"[stub-llm:7f39acc0] Explain the active ledger in one sentence. -> noted"},"inputs_hash":"555f3b6de02a7da02a760b408c12567df633b3781904e84ed3891ef3b33b933e","kind":"prompt","output":"Answer: [stub-llm:7f39acc0] Explain the active ledger in one sentence. -> noted"}

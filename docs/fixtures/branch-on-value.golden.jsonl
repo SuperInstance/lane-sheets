@@ -1,0 +1,6 @@
+{"cell":"input.mode","inputs":{},"inputs_hash":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","kind":"value","output":"fast"}
+{"cell":"arm.fast","inputs":{},"inputs_hash":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","kind":"value","output":"took the short channel"}
+{"cell":"arm.slow","inputs":{},"inputs_hash":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","kind":"value","output":"took the long way round"}
+{"cell":"route.pick","inputs":{"cond":"fast","else":"took the long way round","then":"took the short channel"},"inputs_hash":"aabdc58204bd388a5738db29bdd037ea7cbed8c0e44274cd70ffdce6ed9fc18d","kind":"branch","output":"took the short channel"}
+{"cell":"report.prompt","inputs":{"route":"took the short channel"},"inputs_hash":"894732cf16e563eaf83531eb3960b99544dde0666638df9ae6fb33cb906262a0","kind":"prompt","output":"The run took the short channel."}
+{"cell":"report.answer","inputs":{"prompt":"The run took the short channel."},"inputs_hash":"09e2c3411e9a63eb2d69957af30dba2fa240ceccdbf79d12771511276d8a2dcf","kind":"llm","output":"[stub-llm:cbb08c42] The run took the short channel. -> noted"}
