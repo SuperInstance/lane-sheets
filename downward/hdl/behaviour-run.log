@@ -1,0 +1,38 @@
+BEHAVIOUR: 928-byte triage-clean-nocrc image
+OBSERVE P1: BIND x3 ACKed; core cell_id registers = 0,1,2
+OBSERVE P2 post-boot dials == image rows: cell 0 dial 13 (FTRACE probe) = 0
+OBSERVE P2 post-boot dials == image rows: cell 1 dial 13 (FTRACE probe) = 0
+OBSERVE P2 post-boot dials == image rows: cell 2 dial 13 (FTRACE probe) = 65535
+OBSERVE P2 post-boot dials == image rows: 48 dial readbacks compared
+OBSERVE P3: EFFECT src=EXTID dst=2 dat=99 silently dropped (no NAK, no act change)
+OBSERVE P3: LINK x4 installed; wsum readbacks = bases (16384 / 32768 / 16384)
+OBSERVE P4 @+8 ticks: cell1 slot-for-2 buckets = 1 1 1 1 1 1 1 1
+OBSERVE P4 @+16 ticks: cell1 slot-for-2 buckets = 1 1 1 1 1 1 1 1 hl_cnt=0
+OBSERVE P4: wsum cell1 after 16 ticks = 33022 (bases alone = 32768)
+OBSERVE P4: wsum cell0 after 16 ticks = 16384 (base alone = 16384)
+OBSERVE P4: act probes = 0 0 0 (cells 0,1,2)
+OBSERVE P4b early-window buckets cell1 slot-for-2 = 0 1 1 1 1 1 1 1
+OBSERVE P4b late-window buckets cell1 slot-for-2 = 1 1 1 1 1 1 1 1
+OBSERVE P5: sheet inject {cell 1, dat 42} as EFFECT src=EXTID: silently dropped at cell 0 (no edge-table match)
+OBSERVE P6: inject with port pairing landed after 21 cycles; act cell0 = 42; tickcount = 1882
+OBSERVE P6 after 1 tick: act cell0 = 0, act cell1 = 0 (fire threshold cell0 = 12000)
+OBSERVE P7: port-edge ladder increment after decay tick 1 = 32
+OBSERVE P7: port-edge ladder increment after decay tick 2 = 16
+OBSERVE P7: port-edge ladder increment after decay tick 3 = 8
+OBSERVE P7: port-edge ladder increment after decay tick 4 = 4
+OBSERVE P7: port-edge ladder increment after decay tick 5 = 2
+OBSERVE P7: port-edge ladder increment after decay tick 6 = 0
+OBSERVE P7: port-edge ladder increment after decay tick 7 = 0
+OBSERVE P7: port-edge ladder increment after decay tick 8 = 0
+OBSERVE P7: wsum cell0 at end of decay series = 49152 (49152 at P6)
+OBSERVE P7: wsum cell1 still training-fed = 33278 (32768 = bases alone)
+OBSERVE P8 post-run dials == image rows: cell 0 dial 13 (FTRACE probe) = 0
+OBSERVE P8 post-run dials == image rows: cell 1 dial 13 (FTRACE probe) = 0
+OBSERVE P8 post-run dials == image rows: cell 2 dial 13 (FTRACE probe) = 65535
+OBSERVE P8 post-run dials == image rows: 48 dial readbacks compared
+OBSERVE P9: wsum cell1 at pin time = 34300; slot-for-2 bucket0 = 5
+OBSERVE P9: wsum cell1 after 16 pinned ticks = 34300; slot-for-2 bucket0 = 5
+OBSERVE P9: act cell0 after 8 pinned ticks = 42; act cell1 = 0
+OBSERVE P9: wsum cell0 after 8 pinned ticks = 49408 (expect 49408 = 16384 + 32768 + 256 unshifted train)
+LANE_BEHAVIOUR PASS: booted fabric driven through the lowered op sequence; all fabric-side predictions held (see OBSERVE lines)
+tb/tb_lane_behaviour.v:559: $finish called at 181850000 (1ps)

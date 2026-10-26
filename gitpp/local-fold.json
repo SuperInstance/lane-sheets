@@ -1,0 +1,82 @@
+{
+  "conflicts": [],
+  "order": [
+    "sheet-sheet-reused",
+    "cell-input.a",
+    "cell-input.b",
+    "cell-use.first",
+    "cell-use.second",
+    "cell-join.summary"
+  ],
+  "orphans": [],
+  "state": {
+    "cell.input.a.def": {
+      "value": "the active ledger"
+    },
+    "cell.input.a.inputs": {},
+    "cell.input.a.kind": "value",
+    "cell.input.b.def": {
+      "value": "only the piping is public"
+    },
+    "cell.input.b.inputs": {},
+    "cell.input.b.kind": "value",
+    "cell.join.summary.def": {
+      "template": "A: {{first}} | B: {{second}}"
+    },
+    "cell.join.summary.inputs": {
+      "first": "use.first",
+      "second": "use.second"
+    },
+    "cell.join.summary.kind": "prompt",
+    "cell.use.first.def": {
+      "bind": {
+        "input.text": "text"
+      },
+      "output": "output.report",
+      "sheet": "word-frame"
+    },
+    "cell.use.first.inputs": {
+      "text": "input.a"
+    },
+    "cell.use.first.kind": "sheet",
+    "cell.use.second.def": {
+      "bind": {
+        "input.text": "text"
+      },
+      "output": "output.report",
+      "sheet": "word-frame"
+    },
+    "cell.use.second.inputs": {
+      "text": "input.b"
+    },
+    "cell.use.second.kind": "sheet",
+    "sheet.id": "sheet-reused",
+    "sheet.lanes": [
+      {
+        "cells": [
+          "input.a",
+          "use.first"
+        ],
+        "id": "first"
+      },
+      {
+        "cells": [
+          "input.b",
+          "use.second"
+        ],
+        "id": "second"
+      },
+      {
+        "cells": [
+          "join.summary"
+        ],
+        "id": "join"
+      }
+    ],
+    "sheet.lanesheet": "0.2",
+    "sheet.outputs": [
+      "join.summary"
+    ],
+    "sheet.title": "The same inner sheet used by two outer cells: reuse is the plugin shape"
+  }
+}

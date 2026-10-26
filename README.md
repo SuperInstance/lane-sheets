@@ -2,9 +2,9 @@
 
 **Lane Sheets writes an agent workflow as one JSON sheet — lanes of
 cells connected by piping only — so the same workflow can be read as a
-spreadsheet, run by a reference interpreter, lifted to LangGraph code,
-or hosted against a real model, with the deterministic paths agreeing
-byte-for-byte.** For builders who want their agent workflows as
+spreadsheet, run by a reference interpreter, lifted to LangGraph or
+LangChain code, or hosted against a real model, with the
+deterministic paths agreeing byte-for-byte.** For builders who want their agent workflows as
 portable data that outlives any one framework: LangChain wraps
 LangGraph the way C wraps assembly; a lane sheet is the layer one step
 below both, the way a hardware description sits below the languages
@@ -17,11 +17,11 @@ the rung above it.
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install langgraph
+.venv/bin/pip install langgraph langchain-core
 
 .venv/bin/python run_conformance.py
-# SUMMARY: 27/27 PASS   (interpreter vs golden vs lifted LangGraph,
-#                        byte-for-byte, plus eight named refusals)
+# SUMMARY: 27/27 PASS            (interpreter vs golden vs LangGraph)
+# LANGCHAIN SUMMARY: 27/27 PASS  (the same corpus lifted to LangChain)
 
 python3 downward/run_quf_check.py
 # SUMMARY: 45/45 PASS   (QUF writer/reader for the clean subset:
@@ -88,9 +88,17 @@ producing identical traces, never by trusting each other.
   all sections, the RTL loader only its four payload sections — so
   the writer grew a `--no-crc32` flag (the digest is opt-in per
   §12.2) and `triage-clean-nocrc.quf` is the image that boots.
-  Simulation, not silicon; no workflow has run on the fabric —
-  `steps` is skipped by the loader, which is the unbuilt QUIL
-  question.
+  Simulation, not silicon. And behaviour has now been probed too
+  (`downward/BEHAVIOUR.md`): driving the booted fabric through the
+  mapped op sequence, its state **agrees at the bind layer** —
+  dials byte-exact, canonical hash identical — and **diverges at
+  the run layer in five named places**: an unpaired inject is
+  silently dropped by the fabric, a directed edge costs two LINKs,
+  a THRESH=0 sink oscillates and trains its own upstream synapse,
+  metabolic decay at the image's dial values erases an activation
+  in one tick, and the sheet's numeric regime never reaches the
+  fabric's threshold. A compensation run shows which pins repair
+  most of it; the seven-point list is what a real QUIL must do.
 - **Sheets as git.pp records (`gitpp/`).** A converter pair plus a
   minimal fold port proves the round trip: sheet → records in the
   `.gitpp/records` layout → reconstruction *by the fold alone*
@@ -100,6 +108,11 @@ producing identical traces, never by trusting each other.
   redefinition dominates its ancestor, an equal-class sibling loses
   and is named. Installing a plugin sheet is landing its records;
   uninstall is honestly not a fold operation yet (GITPP-SPIKE.md).
+  The live proof exists too (`gitpp/DOGFOOD.md`): the public repo
+  `patchwork-quilt/gitpp-dogfood-sheet` carries the sheet-reused
+  records, and the released `gitpp-action` derived them in real
+  GitHub CI — its state agreeing with the spike's independent
+  local fold on all 20 keys, zero divergences.
 
 ## The model in five minutes
 
@@ -131,8 +144,8 @@ iteration is exactly the `each` mode, a pre-existing list mapped
 through one interior sheet, capped at 100 elements per cell — lazy
 branching, stored run state or checkpointing, push cell kinds
 (listeners, sensors), arbitrary code cells, parallel-scheduling
-semantics, or predicates beyond equality and truthiness. The lifter
-targets LangGraph only. The host binds one LLM provider (MiniMax)
+semantics, or predicates beyond equality and truthiness. The lifters
+target LangGraph and LangChain (LCEL, langchain-core only). The host binds one LLM provider (MiniMax)
 and stub tools; no streaming, and failures surface as a named
 `ProviderError` with no partial trace. The QUF images cover numeric
 value cells, their edges, and sheet state — text and program cells
@@ -145,7 +158,8 @@ do not cross downward yet.
 - `lanesheet/` — `runtime.py` (shared deterministic runtime, embedded
   verbatim into every lifted module), `common.py` (validation,
   canonical order, sheet resolution), `interpret.py`,
-  `lift_langgraph.py`, `host.py` (binding layer)
+  `lift_langgraph.py`, `lift_langchain.py` (the second lift target —
+  mapping and verdict in LANGCHAIN.md), `host.py` (binding layer)
 - `fixtures/` — the conformance corpus: sheets + golden traces
 - `examples/` — the live-host example sheet, bindings, captured trace
 - `run_conformance.py`, `run_host_check.py` — the two checkers
